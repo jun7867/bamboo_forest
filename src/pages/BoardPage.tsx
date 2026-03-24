@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { Link } from 'react-router-dom'
 import styled from 'styled-components'
+import { NoteActionMenu } from '../components/board/NoteActionMenu'
 import { NoteComposer } from '../components/board/NoteComposer'
 import { NoteEditorDialog } from '../components/board/NoteEditorDialog'
 import { PostItNote } from '../components/board/PostItNote'
@@ -13,10 +14,13 @@ import {
   BOARD_CATEGORY_ORDER,
   POST_IT_COLOR_META,
 } from '../constants/board'
+import { applyNotePriorityAction, sortNotesBySharedOrder } from '../lib/boardOrdering'
 import { getBoardInsights } from '../lib/boardInsights'
 import { useBoardStore } from '../store/useBoardStore'
 import type { BoardCategory, BoardNote, PostItColor } from '../types/board'
 
+const MENU_WIDTH = 220
+const MENU_HEIGHT = 272
 type BoardSortOption = 'manual' | 'latest' | 'oldest' | 'comments'
 
 const Page = styled.main`
@@ -355,7 +359,7 @@ const ZoneCard = styled.section<{ $expanded: boolean }>`
 
 const ZoneHeader = styled.div`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.8rem;
 
@@ -392,11 +396,33 @@ const ZoneHeaderActions = styled.div`
   align-items: center;
   gap: 0.6rem;
   flex-wrap: wrap;
+  justify-content: flex-end;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     width: 100%;
     justify-content: space-between;
   }
+`
+
+const DensityToggle = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.22rem;
+  border-radius: 999px;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: rgba(255, 255, 255, 0.92);
+`
+
+const DensityOption = styled.button<{ $active: boolean }>`
+  min-height: 2rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: ${({ $active }) =>
+    $active ? 'rgba(117, 171, 99, 0.18)' : 'transparent'};
+  color: ${({ theme }) => theme.colors.textStrong};
+  font-size: 0.82rem;
+  font-weight: ${({ $active }) => ($active ? 800 : 600)};
 `
 
 const ZoneBadge = styled.span<{ $accent: string }>`
@@ -453,15 +479,53 @@ const ZoneCanvas = styled.div<{
   }
 `
 
+const StackCanvas = styled.div<{ $softAccent: string; $expanded: boolean }>`
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  min-height: ${({ $expanded }) => ($expanded ? 'calc(100dvh - 19rem)' : '36rem')};
+  padding: 1rem;
+  border-radius: ${({ theme }) => theme.radii.xl};
+  border: 1px solid rgba(80, 115, 61, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.78)),
+    ${({ $softAccent }) => $softAccent};
+  overflow: auto;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    min-height: ${({ $expanded }) => ($expanded ? 'calc(100dvh - 17rem)' : '28rem')};
+  }
+`
+
+const StackSection = styled.section`
+  display: grid;
+  gap: 0.7rem;
+`
+
+const StackSectionTitle = styled.h3`
+  margin: 0;
+  color: ${({ theme }) => theme.colors.textStrong};
+  font-size: 0.88rem;
+  font-weight: 800;
+`
+
+const StackList = styled.div`
+  display: grid;
+  gap: 0.75rem;
+`
+
 const EmptyHint = styled.div`
-  position: absolute;
-  inset: auto 1rem 1rem auto;
   padding: 0.7rem 0.85rem;
   border-radius: ${({ theme }) => theme.radii.lg};
   background: rgba(255, 255, 255, 0.78);
   color: ${({ theme }) => theme.colors.textMuted};
   font-size: 0.86rem;
   box-shadow: ${({ theme }) => theme.shadows.soft};
+`
+
+const SpreadEmptyHint = styled(EmptyHint)`
+  position: absolute;
+  inset: auto 1rem 1rem auto;
 `
 
 const MiniAddButton = styled.button<{ $accent: string }>`
@@ -833,6 +897,38 @@ const TrendCard = styled.div`
   }
 `
 
+interface NoteMenuState {
+  noteId: string
+  x: number
+  y: number
+}
+
+function clampMenuPosition(position: { x: number; y: number }) {
+  if (typeof window === 'undefined') {
+    return position
+  }
+
+  return {
+    x: Math.max(12, Math.min(position.x, window.innerWidth - MENU_WIDTH - 12)),
+    y: Math.max(12, Math.min(position.y, window.innerHeight - MENU_HEIGHT - 12)),
+  }
+}
+
+function getCategoryMap(notes: BoardNote[]) {
+  return BOARD_CATEGORY_ORDER.reduce<Record<BoardCategory, BoardNote[]>>(
+    (accumulator, category) => {
+      accumulator[category] = notes.filter((note) => note.category === category)
+      return accumulator
+    },
+    {
+      praise: [],
+      suggestion: [],
+      freeTalk: [],
+      question: [],
+    },
+  )
+}
+
 function getNotePreview(content: string) {
   return content.length > 56 ? `${content.slice(0, 56)}...` : content
 }
@@ -875,6 +971,7 @@ function sortBoardNotes(notes: BoardNote[], sortOption: BoardSortOption) {
 
 export function BoardPage() {
   const notes = useBoardStore((state) => state.notes)
+  const densityByCategory = useBoardStore((state) => state.densityByCategory)
   const isComposerOpen = useBoardStore((state) => state.isComposerOpen)
   const composerCategory = useBoardStore((state) => state.composerCategory)
   const composerColor = useBoardStore((state) => state.composerColor)
@@ -883,6 +980,7 @@ export function BoardPage() {
   const openComposer = useBoardStore((state) => state.openComposer)
   const closeComposer = useBoardStore((state) => state.closeComposer)
   const clearStatus = useBoardStore((state) => state.clearStatus)
+  const setDensityMode = useBoardStore((state) => state.setDensityMode)
   const loadNotes = useBoardStore((state) => state.loadNotes)
   const addNote = useBoardStore((state) => state.addNote)
   const addComment = useBoardStore((state) => state.addComment)
@@ -890,9 +988,11 @@ export function BoardPage() {
   const updateNote = useBoardStore((state) => state.updateNote)
   const deleteNote = useBoardStore((state) => state.deleteNote)
   const moveNote = useBoardStore((state) => state.moveNote)
+  const reorderNotes = useBoardStore((state) => state.reorderNotes)
 
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
   const [expandedCategory, setExpandedCategory] = useState<BoardCategory | null>(null)
+  const [menuState, setMenuState] = useState<NoteMenuState | null>(null)
   const [sortOption, setSortOption] = useState<BoardSortOption>('manual')
 
   const praiseRef = useRef<HTMLDivElement | null>(null)
@@ -923,14 +1023,48 @@ export function BoardPage() {
     ? BOARD_CATEGORY_ORDER.filter((category) => category === expandedCategory)
     : BOARD_CATEGORY_ORDER
 
+  const notesByCategory = useMemo(() => getCategoryMap(notes), [notes])
+
   const selectedNote = useMemo(
     () => notes.find((note) => note.id === selectedNoteId) ?? null,
     [notes, selectedNoteId],
+  )
+  const menuNote = useMemo(
+    () => notes.find((note) => note.id === menuState?.noteId) ?? null,
+    [menuState?.noteId, notes],
   )
   const insights = useMemo(() => getBoardInsights(notes), [notes])
 
   function handlePaletteCreate(color: PostItColor) {
     openComposer(expandedCategory ?? 'freeTalk', color)
+  }
+
+  function handleOpenNote(note: BoardNote) {
+    setSelectedNoteId(note.id)
+    setMenuState(null)
+  }
+
+  function handleOpenMenu(note: BoardNote, position: { x: number; y: number }) {
+    setMenuState({
+      noteId: note.id,
+      ...clampMenuPosition(position),
+    })
+  }
+
+  function handleCloseMenu() {
+    setMenuState(null)
+  }
+
+  function handleSelectPriorityAction(action: Parameters<typeof applyNotePriorityAction>[2]) {
+    if (!menuNote) {
+      return
+    }
+
+    const categoryNotes = notesByCategory[menuNote.category]
+    const nextItems = applyNotePriorityAction(categoryNotes, menuNote.id, action)
+
+    handleCloseMenu()
+    void reorderNotes(menuNote.category, nextItems)
   }
 
   return (
@@ -978,7 +1112,8 @@ export function BoardPage() {
             <ToolboxCard>
               <ToolboxTitle>포스트잇 서랍</ToolboxTitle>
               <ToolboxText>
-                색을 고르고 메모를 붙인 뒤, 원하는 위치로 끌어다 놓아보세요.
+                색을 고르고 메모를 붙인 뒤, 자세히 보기에서는 끌어 놓고 한눈에 보기에서는
+                겹치지 않게 정리해서 읽어보세요.
               </ToolboxText>
 
               <PaletteGrid>
@@ -1001,7 +1136,7 @@ export function BoardPage() {
               <CategoryList>
                 {BOARD_CATEGORY_ORDER.map((category) => {
                   const meta = BOARD_CATEGORY_META[category]
-                  const count = notes.filter((note) => note.category === category).length
+                  const count = notesByCategory[category].length
 
                   return (
                     <CategoryRow
@@ -1062,8 +1197,8 @@ export function BoardPage() {
             </InsightCard>
 
             <FooterNote>
-              포스트잇을 클릭하면 수정/삭제 모달이 열립니다. 위치 이동은 비밀번호 없이
-              저장되고, 내용 변경과 삭제는 비밀번호가 필요해요.
+              포스트잇을 클릭하면 수정/삭제 모달이 열립니다. 데스크톱에서는 우클릭, 모바일에서는
+              `⋯` 버튼으로 공용 정렬과 상단 고정을 바꿀 수 있어요.
             </FooterNote>
           </Toolbox>
 
@@ -1073,14 +1208,16 @@ export function BoardPage() {
             <BoardGrid $expanded={expandedCategory !== null}>
               {visibleCategories.map((category) => {
                 const meta = BOARD_CATEGORY_META[category]
-                const categoryNotes = sortBoardNotes(
-                  notes.filter((note) => note.category === category),
-                  sortOption,
-                )
+                const baseCategoryNotes = notesByCategory[category]
+                const spreadNotes = sortBoardNotes(baseCategoryNotes, sortOption)
+                const orderedNotes = sortNotesBySharedOrder(baseCategoryNotes)
+                const pinnedNotes = orderedNotes.filter((note) => note.isPinned)
+                const regularNotes = orderedNotes.filter((note) => !note.isPinned)
+                const densityMode = densityByCategory[category] ?? 'spread'
                 const zoneRef = zoneRefs[category]
                 const isExpanded = expandedCategory === category
                 const expandedCanvasHeight = getExpandedCanvasHeight(
-                  categoryNotes.map((note) => note.position),
+                  baseCategoryNotes.map((note) => note.position),
                 )
 
                 return (
@@ -1092,6 +1229,22 @@ export function BoardPage() {
                       </ZoneTitleWrap>
 
                       <ZoneHeaderActions>
+                        <DensityToggle aria-label={`${meta.label} 보기 모드`}>
+                          <DensityOption
+                            type="button"
+                            $active={densityMode === 'spread'}
+                            onClick={() => setDensityMode(category, 'spread')}
+                          >
+                            자세히 보기
+                          </DensityOption>
+                          <DensityOption
+                            type="button"
+                            $active={densityMode === 'stack'}
+                            onClick={() => setDensityMode(category, 'stack')}
+                          >
+                            한눈에 보기
+                          </DensityOption>
+                        </DensityToggle>
                         <FocusButton
                           type="button"
                           $active={isExpanded}
@@ -1121,7 +1274,7 @@ export function BoardPage() {
                             </FocusIcon>
                           )}
                         </FocusButton>
-                        <ZoneBadge $accent={meta.accent}>{categoryNotes.length}</ZoneBadge>
+                        <ZoneBadge $accent={meta.accent}>{baseCategoryNotes.length}</ZoneBadge>
                         <MiniAddButton
                           type="button"
                           $accent={meta.accent}
@@ -1132,30 +1285,82 @@ export function BoardPage() {
                       </ZoneHeaderActions>
                     </ZoneHeader>
 
-                    <ZoneCanvas
-                      ref={zoneRef}
-                      $softAccent={meta.softAccent}
-                      $expanded={isExpanded}
-                      $expandedHeight={expandedCanvasHeight}
-                    >
-                      {categoryNotes.map((note) => (
-                        <PostItNote
-                          key={note.id}
-                          note={note}
-                          zoneRef={zoneRef}
-                          virtualCanvasHeight={expandedCanvasHeight}
-                          onMove={moveNote}
-                          onOpen={(openedNote) => setSelectedNoteId(openedNote.id)}
-                          onToggleLike={async (noteId) => {
-                            await toggleLike({ noteId })
-                          }}
-                        />
-                      ))}
+                    {densityMode === 'spread' ? (
+                      <ZoneCanvas
+                        ref={zoneRef}
+                        $softAccent={meta.softAccent}
+                        $expanded={isExpanded}
+                        $expandedHeight={expandedCanvasHeight}
+                      >
+                        {spreadNotes.map((note) => (
+                          <PostItNote
+                            key={note.id}
+                            note={note}
+                            mode="spread"
+                            zoneRef={zoneRef}
+                            virtualCanvasHeight={expandedCanvasHeight}
+                            onMove={moveNote}
+                            onOpen={handleOpenNote}
+                            onOpenMenu={handleOpenMenu}
+                            onToggleLike={async (noteId) => {
+                              await toggleLike({ noteId })
+                            }}
+                          />
+                        ))}
 
-                      {categoryNotes.length === 0 ? (
-                        <EmptyHint>첫 포스트잇을 붙여보세요.</EmptyHint>
-                      ) : null}
-                    </ZoneCanvas>
+                        {baseCategoryNotes.length === 0 ? (
+                          <SpreadEmptyHint>첫 포스트잇을 붙여보세요.</SpreadEmptyHint>
+                        ) : null}
+                      </ZoneCanvas>
+                    ) : (
+                      <StackCanvas $softAccent={meta.softAccent} $expanded={isExpanded}>
+                        {baseCategoryNotes.length === 0 ? (
+                          <EmptyHint>첫 포스트잇을 붙여보세요.</EmptyHint>
+                        ) : (
+                          <>
+                            {pinnedNotes.length > 0 ? (
+                              <StackSection>
+                                <StackSectionTitle>상단 고정</StackSectionTitle>
+                                <StackList>
+                                  {pinnedNotes.map((note) => (
+                                    <PostItNote
+                                      key={note.id}
+                                      note={note}
+                                      mode="stack"
+                                      onOpen={handleOpenNote}
+                                      onOpenMenu={handleOpenMenu}
+                                      onToggleLike={async (noteId) => {
+                                        await toggleLike({ noteId })
+                                      }}
+                                    />
+                                  ))}
+                                </StackList>
+                              </StackSection>
+                            ) : null}
+
+                            {regularNotes.length > 0 ? (
+                              <StackSection>
+                                <StackSectionTitle>전체 포스트잇</StackSectionTitle>
+                                <StackList>
+                                  {regularNotes.map((note) => (
+                                    <PostItNote
+                                      key={note.id}
+                                      note={note}
+                                      mode="stack"
+                                      onOpen={handleOpenNote}
+                                      onOpenMenu={handleOpenMenu}
+                                      onToggleLike={async (noteId) => {
+                                        await toggleLike({ noteId })
+                                      }}
+                                    />
+                                  ))}
+                                </StackList>
+                              </StackSection>
+                            ) : null}
+                          </>
+                        )}
+                      </StackCanvas>
+                    )}
                   </ZoneCard>
                 )
               })}
@@ -1365,6 +1570,15 @@ export function BoardPage() {
           />
         ) : null}
       </AnimatePresence>
+
+      {menuState && menuNote ? (
+        <NoteActionMenu
+          note={menuNote}
+          position={{ x: menuState.x, y: menuState.y }}
+          onClose={handleCloseMenu}
+          onSelect={handleSelectPriorityAction}
+        />
+      ) : null}
 
       {expandedCategory ? null : <LiveChatPanel />}
     </Page>

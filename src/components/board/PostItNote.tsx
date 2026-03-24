@@ -1,16 +1,18 @@
 import { motion } from 'framer-motion'
-import type { MouseEvent, RefObject } from 'react'
+import type { MouseEvent as ReactMouseEvent, RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
 import { BOARD_CATEGORY_META, POST_IT_COLOR_META } from '../../constants/board'
-import type { BoardNote } from '../../types/board'
+import type { BoardDensityMode, BoardNote } from '../../types/board'
 
 interface PostItNoteProps {
   note: BoardNote
-  zoneRef: RefObject<HTMLDivElement | null>
-  virtualCanvasHeight: number
-  onMove: (id: string, position: BoardNote['position']) => Promise<void>
+  mode: BoardDensityMode
+  zoneRef?: RefObject<HTMLDivElement | null>
+  virtualCanvasHeight?: number
+  onMove?: (id: string, position: BoardNote['position']) => Promise<void>
   onOpen: (note: BoardNote) => void
+  onOpenMenu: (note: BoardNote, position: { x: number; y: number }) => void
   onToggleLike: (noteId: string) => Promise<void>
 }
 
@@ -26,53 +28,102 @@ const NoteCard = styled(motion.article)<{
   $border: string
   $shadow: string
   $text: string
+  $mode: BoardDensityMode
 }>`
-  position: absolute;
+  position: ${({ $mode }) => ($mode === 'spread' ? 'absolute' : 'relative')};
   top: 0;
   left: 0;
-  width: 10.25rem;
-  aspect-ratio: 1;
-  padding: 1.05rem 1rem 0.9rem;
-  border-radius: 0.15rem;
+  width: ${({ $mode }) => ($mode === 'spread' ? '10.25rem' : '100%')};
+  min-height: ${({ $mode }) => ($mode === 'spread' ? 'auto' : '11rem')};
+  aspect-ratio: ${({ $mode }) => ($mode === 'spread' ? '1' : 'auto')};
+  padding: ${({ $mode }) => ($mode === 'spread' ? '1.05rem 1rem 0.9rem' : '1.05rem 1rem 0.92rem')};
+  border-radius: ${({ $mode }) => ($mode === 'spread' ? '0.15rem' : '1rem')};
   border: 1px solid ${({ $border }) => $border};
   background: ${({ $background }) => $background};
   box-shadow: ${({ $shadow }) => $shadow};
   color: ${({ $text }) => $text};
-  cursor: grab;
+  cursor: ${({ $mode }) => ($mode === 'spread' ? 'grab' : 'pointer')};
   display: grid;
-  align-content: space-between;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: 0.52rem;
+  align-content: stretch;
   user-select: none;
   overflow: hidden;
 
   &:active {
-    cursor: grabbing;
+    cursor: ${({ $mode }) => ($mode === 'spread' ? 'grabbing' : 'pointer')};
   }
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    width: 9.2rem;
+    width: ${({ $mode }) => ($mode === 'spread' ? '9.2rem' : '100%')};
   }
 `
 
-const Tape = styled.span<{ $color: string }>`
+const Tape = styled.span<{ $color: string; $mode: BoardDensityMode }>`
   position: absolute;
-  top: 0.55rem;
-  left: 50%;
-  width: 3.2rem;
+  top: ${({ $mode }) => ($mode === 'spread' ? '0.55rem' : '0.7rem')};
+  left: ${({ $mode }) => ($mode === 'spread' ? '50%' : '1.2rem')};
+  width: ${({ $mode }) => ($mode === 'spread' ? '3.2rem' : '2.8rem')};
   height: 0.9rem;
   border-radius: 0.2rem;
   background: ${({ $color }) => $color};
-  transform: translateX(-50%) rotate(-2deg);
+  transform: ${({ $mode }) =>
+    $mode === 'spread' ? 'translateX(-50%) rotate(-2deg)' : 'rotate(-4deg)'};
   opacity: 0.88;
 `
 
-const Content = styled.p`
-  margin: 1.4rem 0 0;
-  font-size: 0.94rem;
-  line-height: 1.6;
-  white-space: pre-wrap;
+const TopRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.55rem;
+`
+
+const PinnedBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.6rem;
+  padding: 0.22rem 0.58rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.68);
+  color: ${({ theme }) => theme.colors.textStrong};
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+`
+
+const MoreButton = styled.button`
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  width: 1.9rem;
+  height: 1.9rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.68);
+  color: ${({ theme }) => theme.colors.textStrong};
+  font-size: 1.02rem;
+  font-weight: 900;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.84);
+  }
+`
+
+const Content = styled.p<{ $mode: BoardDensityMode }>`
+  margin: 0;
+  min-height: 0;
+  align-self: start;
+  font-size: ${({ $mode }) => ($mode === 'spread' ? '0.92rem' : '0.94rem')};
+  line-height: 1.58;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   display: -webkit-box;
   overflow: hidden;
-  -webkit-line-clamp: 6;
+  text-overflow: ellipsis;
+  -webkit-line-clamp: ${({ $mode }) => ($mode === 'spread' ? 2 : 4)};
   -webkit-box-orient: vertical;
 `
 
@@ -81,7 +132,6 @@ const MetaRow = styled.div`
   justify-content: space-between;
   gap: 0.5rem;
   align-items: center;
-  margin-top: 0.8rem;
   font-size: 0.7rem;
   letter-spacing: 0.02em;
   opacity: 0.82;
@@ -92,7 +142,6 @@ const StatRow = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-top: 0.55rem;
 `
 
 const StatPill = styled.span`
@@ -147,10 +196,12 @@ function scaleCoordinate(
 
 export function PostItNote({
   note,
+  mode,
   zoneRef,
   virtualCanvasHeight,
   onMove,
   onOpen,
+  onOpenMenu,
   onToggleLike,
 }: PostItNoteProps) {
   const colorMeta = POST_IT_COLOR_META[note.color]
@@ -161,7 +212,11 @@ export function PostItNote({
   const [noteSize, setNoteSize] = useState(FALLBACK_NOTE_SIZE)
 
   useEffect(() => {
-    const zone = zoneRef.current
+    if (mode !== 'spread') {
+      return
+    }
+
+    const zone = zoneRef?.current
 
     if (!zone) {
       return
@@ -180,9 +235,13 @@ export function PostItNote({
     observer.observe(zone)
 
     return () => observer.disconnect()
-  }, [zoneRef])
+  }, [mode, zoneRef])
 
   useEffect(() => {
+    if (mode !== 'spread') {
+      return
+    }
+
     const target = noteRef.current
 
     if (!target) {
@@ -202,32 +261,24 @@ export function PostItNote({
     observer.observe(target)
 
     return () => observer.disconnect()
-  }, [])
+  }, [mode])
 
-  const actualMaxX = Math.max(
-    NOTE_PADDING,
-    zoneSize.width - noteSize.width - NOTE_PADDING,
-  )
-  const actualMaxY = Math.max(
-    NOTE_PADDING,
-    zoneSize.height - noteSize.height - NOTE_PADDING,
-  )
-  const virtualMaxX = Math.max(
-    NOTE_PADDING,
-    VIRTUAL_CANVAS_WIDTH - noteSize.width - NOTE_PADDING,
-  )
+  const actualMaxX = Math.max(NOTE_PADDING, zoneSize.width - noteSize.width - NOTE_PADDING)
+  const actualMaxY = Math.max(NOTE_PADDING, zoneSize.height - noteSize.height - NOTE_PADDING)
+  const targetVirtualCanvasHeight = virtualCanvasHeight ?? 980
+  const virtualMaxX = Math.max(NOTE_PADDING, VIRTUAL_CANVAS_WIDTH - noteSize.width - NOTE_PADDING)
   const virtualMaxY = Math.max(
     NOTE_PADDING,
-    virtualCanvasHeight - noteSize.height - NOTE_PADDING,
+    targetVirtualCanvasHeight - noteSize.height - NOTE_PADDING,
   )
   const renderedX = scaleCoordinate(note.position.x, virtualMaxX, actualMaxX, NOTE_PADDING)
   const renderedY = scaleCoordinate(note.position.y, virtualMaxY, actualMaxY, NOTE_PADDING)
 
   async function handleDragEnd() {
-    const zone = zoneRef.current
+    const zone = zoneRef?.current
     const target = noteRef.current
 
-    if (!zone || !target) {
+    if (mode !== 'spread' || !zone || !target || !onMove) {
       isDraggingRef.current = false
       return
     }
@@ -262,7 +313,22 @@ export function PostItNote({
     onOpen(note)
   }
 
-  async function handleLikeClick(event: MouseEvent<HTMLButtonElement>) {
+  function handleContextMenu(event: ReactMouseEvent<HTMLElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    onOpenMenu(note, { x: event.clientX, y: event.clientY })
+  }
+
+  function handleMoreButtonClick(event: ReactMouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const { right, bottom } = event.currentTarget.getBoundingClientRect()
+    onOpenMenu(note, { x: right, y: bottom + 8 })
+  }
+
+  async function handleLikeClick(event: ReactMouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
     event.stopPropagation()
     await onToggleLike(note.id)
   }
@@ -274,30 +340,55 @@ export function PostItNote({
       $border={colorMeta.border}
       $shadow={colorMeta.shadow}
       $text={colorMeta.text}
-      drag
-      dragConstraints={zoneRef}
-      dragElastic={0.08}
+      $mode={mode}
+      drag={mode === 'spread'}
+      dragConstraints={mode === 'spread' ? zoneRef : undefined}
+      dragElastic={mode === 'spread' ? 0.08 : 0}
       dragMomentum={false}
       whileHover={{ scale: 1.02 }}
       whileDrag={{ scale: 1.04, zIndex: 30, rotate: note.rotation + 2 }}
-      style={{ x: renderedX, y: renderedY, rotate: note.rotation }}
+      style={
+        mode === 'spread'
+          ? { x: renderedX, y: renderedY, rotate: note.rotation }
+          : undefined
+      }
       initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.24, ease: 'easeOut' }}
       onDragStart={() => {
-        isDraggingRef.current = true
+        if (mode === 'spread') {
+          isDraggingRef.current = true
+        }
       }}
       onDragEnd={handleDragEnd}
+      onContextMenu={handleContextMenu}
       onClick={handleClick}
     >
-      <Tape $color={colorMeta.tape} />
-      <Content>{note.content}</Content>
+      <Tape $color={colorMeta.tape} $mode={mode} />
+      <TopRow>
+        {note.isPinned ? <PinnedBadge>상단 고정</PinnedBadge> : <span />}
+        <MoreButton
+          type="button"
+          aria-label="포스트잇 정렬 메뉴 열기"
+          aria-haspopup="menu"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={handleMoreButtonClick}
+        >
+          ⋯
+        </MoreButton>
+      </TopRow>
+      <Content $mode={mode}>{note.content}</Content>
       <MetaRow>
         <span>{categoryMeta.label}</span>
         <span>{note.author || '익명'}</span>
       </MetaRow>
       <StatRow>
-        <LikeButton type="button" $active={note.isLiked ?? false} onClick={handleLikeClick}>
+        <LikeButton
+          type="button"
+          $active={note.isLiked ?? false}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={handleLikeClick}
+        >
           <span>{note.isLiked ? '♥' : '♡'}</span>
           <span>{note.likesCount ?? 0}</span>
         </LikeButton>

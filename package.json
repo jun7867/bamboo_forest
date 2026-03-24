@@ -8,6 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "agentation:mcp": "agentation-mcp server",
+    "agentation:doctor": "agentation-mcp doctor",
     "version:main": "node scripts/bump-app-version.mjs major",
     "version:middle": "node scripts/bump-app-version.mjs minor",
     "version:minor": "node scripts/bump-app-version.mjs patch"
@@ -27,6 +29,8 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "agentation": "^2.3.3",
+    "agentation-mcp": "^1.2.0",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",

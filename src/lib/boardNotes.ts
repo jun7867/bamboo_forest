@@ -6,6 +6,7 @@ import type {
   CreateBoardNoteInput,
   CreateBoardNoteCommentInput,
   DeleteBoardNoteInput,
+  ReorderBoardNoteItem,
   ToggleBoardNoteLikeInput,
   UpdateBoardNoteInput,
 } from '../types/board'
@@ -19,6 +20,8 @@ interface BoardNoteRow {
   position_x: number
   position_y: number
   rotation: number
+  is_pinned: boolean
+  sort_rank: number
   created_at: string
   updated_at: string
 }
@@ -46,10 +49,7 @@ function mapBoardNoteComment(row: BoardNoteCommentRow): BoardNoteComment {
   }
 }
 
-function mapBoardNote(
-  row: BoardNoteRow,
-  comments: BoardNoteComment[] = [],
-): BoardNote {
+function mapBoardNote(row: BoardNoteRow, comments: BoardNoteComment[] = []): BoardNote {
   return {
     id: row.id,
     category: row.category,
@@ -61,6 +61,8 @@ function mapBoardNote(
       y: row.position_y,
     },
     rotation: row.rotation,
+    isPinned: row.is_pinned,
+    sortRank: row.sort_rank,
     comments,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -88,6 +90,10 @@ function mapBoardError(error: { message?: string } | null, fallbackMessage: stri
 
   if (error.message.includes('NOTE_NOT_FOUND')) {
     return '이미 삭제되었거나 찾을 수 없는 포스트잇이에요.'
+  }
+
+  if (error.message.includes('INVALID_PAYLOAD')) {
+    return '포스트잇 순서를 저장하지 못했어요. 새로고침 후 다시 시도해 주세요.'
   }
 
   return fallbackMessage
@@ -140,18 +146,21 @@ export async function fetchBoardNotes(clientId: string) {
     throw new Error('포스트잇 좋아요 정보를 불러오지 못했어요.')
   }
 
-  const commentsByNoteId = ((commentsResult.error && isMissingCommentsTableError(commentsResult.error))
-    ? []
-    : commentsResult.data ?? [])
+  const commentsByNoteId = (
+    commentsResult.error && isMissingCommentsTableError(commentsResult.error)
+      ? []
+      : commentsResult.data ?? []
+  )
     .map(mapBoardNoteComment)
     .reduce<Record<string, BoardNoteComment[]>>((accumulator, comment) => {
       accumulator[comment.noteId] = [...(accumulator[comment.noteId] ?? []), comment]
       return accumulator
     }, {})
 
-  const likesByNoteId = ((likesResult.error && isMissingLikesTableError(likesResult.error))
-    ? []
-    : (likesResult.data as BoardNoteLikeRow[] | null) ?? []
+  const likesByNoteId = (
+    likesResult.error && isMissingLikesTableError(likesResult.error)
+      ? []
+      : (likesResult.data as BoardNoteLikeRow[] | null) ?? []
   ).reduce<Record<string, { count: number; liked: boolean }>>((accumulator, row) => {
     const current = accumulator[row.note_id] ?? { count: 0, liked: false }
 
@@ -163,13 +172,11 @@ export async function fetchBoardNotes(clientId: string) {
     return accumulator
   }, {})
 
-  return (data ?? []).map((row: BoardNoteRow) =>
-    ({
-      ...mapBoardNote(row, commentsByNoteId[row.id] ?? []),
-      likesCount: likesByNoteId[row.id]?.count ?? 0,
-      isLiked: likesByNoteId[row.id]?.liked ?? false,
-    }),
-  )
+  return (data ?? []).map((row: BoardNoteRow) => ({
+    ...mapBoardNote(row, commentsByNoteId[row.id] ?? []),
+    likesCount: likesByNoteId[row.id]?.count ?? 0,
+    isLiked: likesByNoteId[row.id]?.liked ?? false,
+  }))
 }
 
 export async function createBoardNote(
@@ -244,6 +251,27 @@ export async function deleteBoardNote(input: DeleteBoardNoteInput) {
   if (error) {
     throw new Error(mapBoardError(error, '포스트잇을 삭제하지 못했어요.'))
   }
+}
+
+export async function reorderBoardNotes(
+  category: BoardNote['category'],
+  items: ReorderBoardNoteItem[],
+) {
+  const client = getSupabaseClient()
+  const { data, error } = await client.rpc('reorder_board_notes', {
+    p_category: category,
+    p_note_orders: items.map((item) => ({
+      id: item.id,
+      is_pinned: item.isPinned,
+      sort_rank: item.sortRank,
+    })),
+  })
+
+  if (error) {
+    throw new Error(mapBoardError(error, '포스트잇 순서를 저장하지 못했어요.'))
+  }
+
+  return (data ?? []).map((row: BoardNoteRow) => mapBoardNote(row))
 }
 
 export async function createBoardNoteComment(input: CreateBoardNoteCommentInput) {
