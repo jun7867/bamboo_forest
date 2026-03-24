@@ -327,13 +327,18 @@ const FocusButton = styled.button<{ $active: boolean }>`
   justify-content: center;
   width: 2.4rem;
   height: 2.4rem;
+  padding: 0;
   border-radius: 999px;
   border: 1px solid ${({ theme }) => theme.colors.borderStrong};
   background: ${({ $active }) =>
     $active ? 'rgba(117, 171, 99, 0.18)' : 'rgba(255, 255, 255, 0.9)'};
   color: ${({ theme }) => theme.colors.textStrong};
-  font-size: 1.1rem;
-  font-weight: 700;
+`
+
+const FocusIcon = styled.svg`
+  width: 1.15rem;
+  height: 1.15rem;
+  display: block;
 `
 
 const ZoneCanvas = styled.div<{ $softAccent: string; $expanded: boolean }>`
@@ -454,7 +459,7 @@ export function BoardPage() {
           <TitleBlock>
             <Eyebrow>채용혁신개발팀</Eyebrow>
             <PageTitle>하고싶은거 다 말해~</PageTitle>
-            <Description>제작자 남준영</Description>
+            <Description>제작자 남준영 v.0.0.4</Description>
           </TitleBlock>
 
           <HeaderActions>
@@ -558,7 +563,23 @@ export function BoardPage() {
                             )
                           }
                         >
-                          {isExpanded ? '×' : '⤢'}
+                          {isExpanded ? (
+                            <FocusIcon viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                              <path d="M7 7l10 10" />
+                              <path d="M17 7L7 17" />
+                            </FocusIcon>
+                          ) : (
+                            <FocusIcon viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                              <path d="M9 3H3v6" />
+                              <path d="M15 3h6v6" />
+                              <path d="M21 15v6h-6" />
+                              <path d="M3 15v6h6" />
+                              <path d="M8 8L3 3" />
+                              <path d="M16 8l5-5" />
+                              <path d="M16 16l5 5" />
+                              <path d="M8 16l-5 5" />
+                            </FocusIcon>
+                          )}
                         </FocusButton>
                         <ZoneBadge $accent={meta.accent}>{categoryNotes.length}</ZoneBadge>
                         <MiniAddButton

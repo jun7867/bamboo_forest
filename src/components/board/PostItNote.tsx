@@ -1,4 +1,3 @@
-import type { PanInfo } from 'framer-motion'
 import { motion } from 'framer-motion'
 import type { RefObject } from 'react'
 import { useRef } from 'react'
@@ -91,27 +90,27 @@ export function PostItNote({ note, zoneRef, onMove, onOpen }: PostItNoteProps) {
   const colorMeta = POST_IT_COLOR_META[note.color]
   const categoryMeta = BOARD_CATEGORY_META[note.category]
   const isDraggingRef = useRef(false)
+  const noteRef = useRef<HTMLElement | null>(null)
 
-  async function handleDragEnd(
-    event: MouseEvent | TouchEvent | PointerEvent,
-    info: PanInfo,
-  ) {
+  async function handleDragEnd() {
     const zone = zoneRef.current
-    const target = event.currentTarget as HTMLDivElement | null
+    const target = noteRef.current
 
     if (!zone || !target) {
       isDraggingRef.current = false
       return
     }
 
+    const zoneRect = zone.getBoundingClientRect()
+    const noteRect = target.getBoundingClientRect()
     const padding = 14
     const nextX = clamp(
-      note.position.x + info.offset.x,
+      noteRect.left - zoneRect.left,
       padding,
       zone.clientWidth - target.offsetWidth - padding,
     )
     const nextY = clamp(
-      note.position.y + info.offset.y,
+      noteRect.top - zoneRect.top,
       padding,
       zone.clientHeight - target.offsetHeight - padding,
     )
@@ -133,6 +132,7 @@ export function PostItNote({ note, zoneRef, onMove, onOpen }: PostItNoteProps) {
 
   return (
     <NoteCard
+      ref={noteRef}
       $background={colorMeta.background}
       $border={colorMeta.border}
       $shadow={colorMeta.shadow}

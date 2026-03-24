@@ -1,13 +1,16 @@
 {
   "name": "job-innovation-bamboo-forest",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "version:main": "node scripts/bump-app-version.mjs major",
+    "version:middle": "node scripts/bump-app-version.mjs minor",
+    "version:minor": "node scripts/bump-app-version.mjs patch"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.3",

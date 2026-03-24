@@ -1,7 +1,10 @@
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import styled from 'styled-components'
 import { BambooIllustration } from '../components/landing/BambooIllustration'
+import { APP_VERSION_LABEL } from '../config/appVersion'
+import { RELEASE_NOTES } from '../config/releaseNotes'
 
 const Page = styled.main`
   min-height: 100dvh;
@@ -97,6 +100,42 @@ const Description = styled.p`
   }
 `
 
+const VersionRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
+    justify-content: center;
+  }
+`
+
+const VersionText = styled(Description)`
+  max-width: none;
+`
+
+const PatchButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.6rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: rgba(255, 255, 255, 0.86);
+  color: ${({ theme }) => theme.colors.textStrong};
+  box-shadow: ${({ theme }) => theme.shadows.soft};
+  font-size: 0.92rem;
+  font-weight: 700;
+`
+
+const PatchIcon = styled.svg`
+  width: 1.2rem;
+  height: 1.2rem;
+`
+
 const HighlightRow = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -143,7 +182,72 @@ const VisualBlock = styled(motion.div)`
   justify-content: center;
 `
 
+const Backdrop = styled(motion.div)`
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  background: rgba(41, 54, 39, 0.34);
+  backdrop-filter: blur(10px);
+`
+
+const PatchDialog = styled(motion.div)`
+  width: min(34rem, 100%);
+  max-height: min(42rem, calc(100dvh - 2rem));
+  overflow-y: auto;
+  padding: 1.35rem;
+  border-radius: ${({ theme }) => theme.radii.xl};
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(249, 246, 238, 0.98));
+  box-shadow: ${({ theme }) => theme.shadows.card};
+`
+
+const PatchHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  h2 {
+    margin: 0 0 0.25rem;
+    font-family: ${({ theme }) => theme.fonts.heading};
+    color: ${({ theme }) => theme.colors.textStrong};
+    font-size: 1.75rem;
+  }
+
+  p {
+    margin: 0;
+    color: ${({ theme }) => theme.colors.textMuted};
+    line-height: 1.6;
+  }
+`
+
+const CloseButton = styled.button`
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: rgba(255, 255, 255, 0.9);
+  color: ${({ theme }) => theme.colors.textStrong};
+  font-size: 1.15rem;
+`
+
+const PatchList = styled.ul`
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.75rem;
+  color: ${({ theme }) => theme.colors.textStrong};
+  line-height: 1.7;
+`
+
 export function LandingPage() {
+  const [isPatchOpen, setIsPatchOpen] = useState(false)
+
   return (
     <Page>
       <HeroCard>
@@ -160,9 +264,23 @@ export function LandingPage() {
             <br />
           
           </Title>
-          <div style={{fontSize: '60px', fontWeight: '700'}}>
-          (제작자 남준영)
-          </div>
+          <div style={{ fontSize: '60px', fontWeight: '700' }}>(제작자 남준영)</div>
+          <VersionRow>
+            <VersionText>제작자 남준영 v.{APP_VERSION_LABEL}</VersionText>
+            <PatchButton
+              type="button"
+              aria-label="패치 노트 보기"
+              title="패치 노트 보기"
+              onClick={() => setIsPatchOpen(true)}
+            >
+              <PatchIcon viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+                <circle cx="12" cy="12" r="8" opacity="0.18" />
+              </PatchIcon>
+              <span>패치노트</span>
+            </PatchButton>
+          </VersionRow>
           <Description>
             익명으로도, 이름을 적고도 팀의 의견을 모을 수 있는 대나무숲입니다.
             칭찬, 건의, 질문, 하고 싶은 말을 한 곳에서 자연스럽게 모으고 정리할 수
@@ -193,6 +311,42 @@ export function LandingPage() {
           <BambooIllustration />
         </VisualBlock>
       </HeroCard>
+
+      <AnimatePresence>
+        {isPatchOpen ? (
+          <Backdrop
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsPatchOpen(false)}
+          >
+            <PatchDialog
+              initial={{ opacity: 0, y: 20, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <PatchHeader>
+                <div>
+                  <h2>패치 노트</h2>
+                  <p>v.{APP_VERSION_LABEL}까지 반영된 주요 개발 항목이에요.</p>
+                </div>
+
+                <CloseButton type="button" onClick={() => setIsPatchOpen(false)} aria-label="닫기">
+                  ×
+                </CloseButton>
+              </PatchHeader>
+
+              <PatchList>
+                {RELEASE_NOTES.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </PatchList>
+            </PatchDialog>
+          </Backdrop>
+        ) : null}
+      </AnimatePresence>
     </Page>
   )
 }
