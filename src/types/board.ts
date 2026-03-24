@@ -1,5 +1,7 @@
 export type BoardCategory = 'praise' | 'suggestion' | 'freeTalk' | 'question'
 
+export type BoardDensityMode = 'spread' | 'stack'
+
 export type PostItColor =
   | 'butter'
   | 'sky'
@@ -21,8 +23,13 @@ export interface BoardNote {
   color: PostItColor
   position: BoardPosition
   rotation: number
+<<<<<<< HEAD
   likesCount?: number
   isLiked?: boolean
+=======
+  isPinned: boolean
+  sortRank: number
+>>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
   comments?: BoardNoteComment[]
   password?: string
   createdAt?: string
@@ -65,8 +72,15 @@ export interface CreateBoardNoteCommentInput {
   content: string
 }
 
+<<<<<<< HEAD
 export interface ToggleBoardNoteLikeInput {
   noteId: string
   clientId: string
   isLiked: boolean
+=======
+export interface ReorderBoardNoteItem {
+  id: string
+  isPinned: boolean
+  sortRank: number
+>>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
 }

@@ -1,25 +1,37 @@
 import { create } from 'zustand'
-import { cloneInitialBoardNotes } from '../constants/board'
+import { BOARD_CATEGORY_ORDER, cloneInitialBoardNotes } from '../constants/board'
 import {
   createBoardNote,
   createBoardNoteComment,
   deleteBoardNote,
   fetchBoardNotes,
   moveBoardNote,
+<<<<<<< HEAD
   toggleBoardNoteLike,
   updateBoardNote,
 } from '../lib/boardNotes'
 import { getBoardVisitorId } from '../lib/boardVisitor'
+=======
+  reorderBoardNotes,
+  updateBoardNote,
+} from '../lib/boardNotes'
+import { applyReorderItemsToNotes, getNextSortRank } from '../lib/boardOrdering'
+>>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
 import { isSupabaseConfigured } from '../lib/supabase'
 import type {
   BoardCategory,
+  BoardDensityMode,
   BoardNote,
   BoardPosition,
   CreateBoardNoteInput,
   CreateBoardNoteCommentInput,
   DeleteBoardNoteInput,
   PostItColor,
+<<<<<<< HEAD
   ToggleBoardNoteLikeInput,
+=======
+  ReorderBoardNoteItem,
+>>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
   UpdateBoardNoteInput,
 } from '../types/board'
 
@@ -32,6 +44,7 @@ interface BoardStatus {
 
 interface BoardStore {
   notes: BoardNote[]
+  densityByCategory: Record<BoardCategory, BoardDensityMode>
   isComposerOpen: boolean
   composerCategory: BoardCategory
   composerColor: PostItColor
@@ -42,6 +55,7 @@ interface BoardStore {
   openComposer: (category?: BoardCategory, color?: PostItColor) => void
   closeComposer: () => void
   clearStatus: () => void
+  setDensityMode: (category: BoardCategory, mode: BoardDensityMode) => void
   loadNotes: (force?: boolean) => Promise<void>
   addNote: (input: CreateBoardNoteInput) => Promise<{ ok: boolean; message?: string }>
   addComment: (
@@ -53,11 +67,30 @@ interface BoardStore {
   updateNote: (input: UpdateBoardNoteInput) => Promise<{ ok: boolean; message?: string }>
   deleteNote: (input: DeleteBoardNoteInput) => Promise<{ ok: boolean; message?: string }>
   moveNote: (id: string, position: BoardPosition) => Promise<void>
+  reorderNotes: (category: BoardCategory, items: ReorderBoardNoteItem[]) => Promise<void>
 }
 
 const FALLBACK_CATEGORY: BoardCategory = 'freeTalk'
 const FALLBACK_COLOR: PostItColor = 'butter'
 const ROTATIONS = [-2.8, 1.6, -1.2, 2.4, -0.9, 1.1]
+
+function createInitialDensityByCategory(): Record<BoardCategory, BoardDensityMode> {
+  return BOARD_CATEGORY_ORDER.reduce<Record<BoardCategory, BoardDensityMode>>(
+    (accumulator, category) => {
+      accumulator[category] = 'spread'
+      return accumulator
+    },
+    {} as Record<BoardCategory, BoardDensityMode>,
+  )
+}
+
+function replaceCategoryNotes(
+  notes: BoardNote[],
+  category: BoardCategory,
+  nextCategoryNotes: BoardNote[],
+) {
+  return notes.filter((note) => note.category !== category).concat(nextCategoryNotes)
+}
 
 function getSuggestedPosition(noteCount: number) {
   return {
@@ -76,6 +109,8 @@ function withNewNoteShape(notes: BoardNote[], input: CreateBoardNoteInput): Boar
     ...input,
     position: getSuggestedPosition(noteCountInCategory),
     rotation: ROTATIONS[notes.length % ROTATIONS.length],
+    isPinned: false,
+    sortRank: getNextSortRank(notes, input.category),
   }
 }
 
@@ -103,6 +138,7 @@ function getSuggestedCommentAuthor() {
 
 export const useBoardStore = create<BoardStore>((set, get) => ({
   notes: [],
+  densityByCategory: createInitialDensityByCategory(),
   isComposerOpen: false,
   composerCategory: FALLBACK_CATEGORY,
   composerColor: FALLBACK_COLOR,
@@ -118,6 +154,13 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     }),
   closeComposer: () => set({ isComposerOpen: false }),
   clearStatus: () => set({ status: null }),
+  setDensityMode: (category, mode) =>
+    set((state) => ({
+      densityByCategory: {
+        ...state.densityByCategory,
+        [category]: mode,
+      },
+    })),
   loadNotes: async (force = false) => {
     if (get().hasLoaded && !force) {
       return
@@ -350,6 +393,14 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
                 author: input.author,
                 color: input.color,
                 content: input.content,
+                sortRank:
+                  note.category === input.category
+                    ? note.sortRank
+                    : getNextSortRank(
+                        current.notes.filter((currentNote) => currentNote.id !== input.id),
+                        input.category,
+                        note.isPinned,
+                      ),
               }
             : note,
         ),
@@ -454,6 +505,49 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     } catch (error) {
       const message =
         error instanceof Error ? error.message : '포스트잇 위치 저장에 실패했어요.'
+
+      set({
+        notes: previousNotes,
+        status: {
+          tone: 'error',
+          message,
+        },
+      })
+    }
+  },
+  reorderNotes: async (category, items) => {
+    const previousNotes = get().notes
+    const optimisticNotes = applyReorderItemsToNotes(previousNotes, items)
+
+    set({
+      notes: optimisticNotes,
+      status: null,
+    })
+
+    if (get().dataSource === 'demo' || !isSupabaseConfigured) {
+      return
+    }
+
+    try {
+      const updatedCategoryNotes = await reorderBoardNotes(category, items)
+
+      set((current) => ({
+        notes: replaceCategoryNotes(
+          current.notes,
+          category,
+          updatedCategoryNotes.map((note: BoardNote) => {
+            const previousNote = current.notes.find((currentNote) => currentNote.id === note.id)
+
+            return previousNote?.comments
+              ? { ...note, comments: previousNote.comments }
+              : note
+          }),
+        ),
+        status: null,
+      }))
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : '포스트잇 순서를 저장하지 못했어요.'
 
       set({
         notes: previousNotes,
