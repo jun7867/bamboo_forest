@@ -12,6 +12,11 @@ const Page = styled.main`
   align-items: center;
   justify-content: center;
   padding: 2rem 1.5rem;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    padding: 1rem 0.85rem 1.2rem;
+    align-items: stretch;
+  }
 `
 
 const HeroCard = styled.section`
@@ -56,6 +61,12 @@ const HeroCard = styled.section`
     grid-template-columns: 1fr;
     text-align: center;
   }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    gap: 1.25rem;
+    padding: 1.15rem 1rem 1.25rem;
+    border-radius: ${({ theme }) => theme.radii.xl};
+  }
 `
 
 const CopyBlock = styled(motion.div)`
@@ -86,6 +97,11 @@ const Title = styled.h1`
   font-size: 44px;
   line-height: 0.98;
   color: ${({ theme }) => theme.colors.textStrong};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    font-size: 2.1rem;
+    line-height: 1.04;
+  }
 `
 
 const Description = styled.p`
@@ -98,6 +114,11 @@ const Description = styled.p`
   @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
     max-width: none;
   }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
 `
 
 const VersionRow = styled.div`
@@ -108,6 +129,11 @@ const VersionRow = styled.div`
 
   @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
     justify-content: center;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    display: grid;
+    gap: 0.55rem;
   }
 `
 
@@ -147,6 +173,8 @@ const HighlightRow = styled.div`
 `
 
 const HighlightChip = styled.span`
+  display: inline-flex;
+  align-items: center;
   padding: 0.6rem 0.85rem;
   border-radius: 999px;
   border: 1px solid rgba(87, 117, 66, 0.14);
@@ -154,6 +182,12 @@ const HighlightChip = styled.span`
   color: ${({ theme }) => theme.colors.textMuted};
   font-size: 0.95rem;
   font-weight: 600;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.9rem;
+  }
 `
 
 const EnterButton = styled(motion(Link))`
@@ -174,12 +208,22 @@ const EnterButton = styled(motion(Link))`
   @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
     margin: 0 auto;
   }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
+    min-height: 3.15rem;
+  }
 `
 
 const VisualBlock = styled(motion.div)`
   display: flex;
   align-items: center;
   justify-content: center;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    max-width: 18rem;
+    margin: 0 auto;
+  }
 `
 
 const Backdrop = styled(motion.div)`
@@ -203,6 +247,12 @@ const PatchDialog = styled(motion.div)`
   border: 1px solid ${({ theme }) => theme.colors.borderStrong};
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(249, 246, 238, 0.98));
   box-shadow: ${({ theme }) => theme.shadows.card};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    padding: 1rem;
+    max-height: calc(100dvh - 1.2rem);
+    border-radius: ${({ theme }) => theme.radii.lg};
+  }
 `
 
 const PatchHeader = styled.div`

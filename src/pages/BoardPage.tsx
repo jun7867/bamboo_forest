@@ -22,7 +22,7 @@ const Page = styled.main`
   padding: 1.6rem 1.4rem 2.2rem;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    padding: 1rem 0.85rem 1.8rem;
+    padding: 0.85rem 0.75rem 1.4rem;
   }
 `
 
@@ -46,6 +46,7 @@ const Header = styled.header`
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     flex-direction: column;
+    padding: 1rem;
   }
 `
 
@@ -85,6 +86,12 @@ const HeaderActions = styled.div`
   flex-wrap: wrap;
   gap: 0.75rem;
   justify-content: flex-end;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
 `
 
 const PrimaryButton = styled.button`
@@ -95,6 +102,10 @@ const PrimaryButton = styled.button`
   color: #ffffff;
   font-weight: 700;
   box-shadow: 0 16px 28px rgba(78, 141, 84, 0.24);
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
+  }
 `
 
 const SecondaryLink = styled(Link)`
@@ -109,6 +120,10 @@ const SecondaryLink = styled(Link)`
   color: ${({ theme }) => theme.colors.textStrong};
   text-decoration: none;
   font-weight: 700;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
+  }
 `
 
 const StatusBanner = styled.div<{ $tone: 'info' | 'error' }>`
@@ -166,6 +181,11 @@ const ToolboxCard = styled.div`
   border: 1px solid ${({ theme }) => theme.colors.borderStrong};
   background: rgba(255, 255, 255, 0.86);
   box-shadow: ${({ theme }) => theme.shadows.soft};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    padding: 0.85rem;
+    border-radius: ${({ theme }) => theme.radii.lg};
+  }
 `
 
 const ToolboxTitle = styled.h2`
@@ -187,6 +207,11 @@ const PaletteGrid = styled.div`
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.55rem;
   margin-top: 0.85rem;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
 `
 
 const SwatchButton = styled.button<{ $background: string; $border: string }>`
@@ -222,6 +247,10 @@ const CategoryRow = styled.button<{ $accent: string }>`
   border: 1px solid ${({ theme }) => theme.colors.borderStrong};
   background: rgba(255, 255, 255, 0.84);
   text-align: left;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    padding: 0.7rem;
+  }
 
   span:last-child {
     min-width: 1.9rem;
@@ -260,6 +289,11 @@ const BoardSurface = styled.div`
     linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 244, 236, 0.96));
   background-size: 18px 18px, 100% 100%;
   box-shadow: ${({ theme }) => theme.shadows.card};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    padding: 0.85rem;
+    border-radius: ${({ theme }) => theme.radii.lg};
+  }
 `
 
 const BoardGrid = styled.div<{ $expanded: boolean }>`
@@ -270,6 +304,10 @@ const BoardGrid = styled.div<{ $expanded: boolean }>`
 
   @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
     grid-template-columns: 1fr;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    gap: 1rem;
   }
 `
 
@@ -284,6 +322,11 @@ const ZoneHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `
 
 const ZoneTitleWrap = styled.div`
@@ -296,6 +339,10 @@ const ZoneTitle = styled.h2`
   font-family: ${({ theme }) => theme.fonts.heading};
   font-size: 1.55rem;
   color: ${({ theme }) => theme.colors.textStrong};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    font-size: 1.35rem;
+  }
 `
 
 const ZoneDescription = styled.p`
@@ -309,6 +356,11 @@ const ZoneHeaderActions = styled.div`
   align-items: center;
   gap: 0.6rem;
   flex-wrap: wrap;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
+    justify-content: space-between;
+  }
 `
 
 const ZoneBadge = styled.span<{ $accent: string }>`
@@ -354,7 +406,8 @@ const ZoneCanvas = styled.div<{ $softAccent: string; $expanded: boolean }>`
   overflow: hidden;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    min-height: ${({ $expanded }) => ($expanded ? 'calc(100dvh - 17rem)' : '28rem')};
+    min-height: ${({ $expanded }) => ($expanded ? 'calc(100dvh - 14rem)' : '24rem')};
+    border-radius: ${({ theme }) => theme.radii.lg};
   }
 `
 
@@ -505,6 +558,10 @@ const StatsHeader = styled.div`
     color: ${({ theme }) => theme.colors.textMuted};
     line-height: 1.7;
   }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    padding: 0.7rem 0.2rem 0;
+  }
 `
 
 const StatsGrid = styled.div`
@@ -533,6 +590,12 @@ const StatsCard = styled.section<{ $span?: number }>`
 
   @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
     grid-column: span 1;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    gap: 0.8rem;
+    padding: 0.95rem;
+    border-radius: ${({ theme }) => theme.radii.lg};
   }
 `
 
