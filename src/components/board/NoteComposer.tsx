@@ -262,7 +262,7 @@ const PrimaryButton = styled.button`
   box-shadow: 0 14px 24px rgba(77, 122, 84, 0.2);
 `
 
-const MAX_NOTE_LENGTH = 120
+const MAX_NOTE_LENGTH = 1000
 
 export function NoteComposer({
   initialCategory,
