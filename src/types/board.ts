@@ -23,13 +23,10 @@ export interface BoardNote {
   color: PostItColor
   position: BoardPosition
   rotation: number
-<<<<<<< HEAD
-  likesCount?: number
-  isLiked?: boolean
-=======
   isPinned: boolean
   sortRank: number
->>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
+  likesCount?: number
+  isLiked?: boolean
   comments?: BoardNoteComment[]
   password?: string
   createdAt?: string
@@ -72,15 +69,14 @@ export interface CreateBoardNoteCommentInput {
   content: string
 }
 
-<<<<<<< HEAD
 export interface ToggleBoardNoteLikeInput {
   noteId: string
   clientId: string
   isLiked: boolean
-=======
+}
+
 export interface ReorderBoardNoteItem {
   id: string
   isPinned: boolean
   sortRank: number
->>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
 }

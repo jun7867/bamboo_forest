@@ -14,11 +14,8 @@ import {
   BOARD_CATEGORY_ORDER,
   POST_IT_COLOR_META,
 } from '../constants/board'
-<<<<<<< HEAD
-import { getBoardInsights } from '../lib/boardInsights'
-=======
 import { applyNotePriorityAction, sortNotesBySharedOrder } from '../lib/boardOrdering'
->>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
+import { getBoardInsights } from '../lib/boardInsights'
 import { useBoardStore } from '../store/useBoardStore'
 import type { BoardCategory, BoardNote, PostItColor } from '../types/board'
 
@@ -396,7 +393,7 @@ const StackCanvas = styled.div<{ $softAccent: string; $expanded: boolean }>`
   display: grid;
   align-content: start;
   gap: 1rem;
-  min-height: ${({ $expanded }) => ($expanded ? 'calc(100dvh - 20rem)' : '31rem')};
+  min-height: ${({ $expanded }) => ($expanded ? 'calc(100dvh - 19rem)' : '36rem')};
   padding: 1rem;
   border-radius: ${({ theme }) => theme.radii.xl};
   border: 1px solid rgba(80, 115, 61, 0.12);
@@ -406,7 +403,7 @@ const StackCanvas = styled.div<{ $softAccent: string; $expanded: boolean }>`
   overflow: auto;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    min-height: ${({ $expanded }) => ($expanded ? 'calc(100dvh - 17rem)' : '24rem')};
+    min-height: ${({ $expanded }) => ($expanded ? 'calc(100dvh - 17rem)' : '28rem')};
   }
 `
 
@@ -555,7 +552,6 @@ const LoadingText = styled.div`
   font-weight: 600;
 `
 
-<<<<<<< HEAD
 const StatsSection = styled.section`
   display: grid;
   gap: 1rem;
@@ -801,9 +797,6 @@ const TrendCard = styled.div`
   }
 `
 
-function getNotePreview(content: string) {
-  return content.length > 56 ? `${content.slice(0, 56)}...` : content
-=======
 interface NoteMenuState {
   noteId: string
   x: number
@@ -834,7 +827,10 @@ function getCategoryMap(notes: BoardNote[]) {
       question: [],
     },
   )
->>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
+}
+
+function getNotePreview(content: string) {
+  return content.length > 56 ? `${content.slice(0, 56)}...` : content
 }
 
 export function BoardPage() {
@@ -896,12 +892,11 @@ export function BoardPage() {
     () => notes.find((note) => note.id === selectedNoteId) ?? null,
     [notes, selectedNoteId],
   )
-  const insights = useMemo(() => getBoardInsights(notes), [notes])
-
   const menuNote = useMemo(
     () => notes.find((note) => note.id === menuState?.noteId) ?? null,
     [menuState?.noteId, notes],
   )
+  const insights = useMemo(() => getBoardInsights(notes), [notes])
 
   function handlePaletteCreate(color: PostItColor) {
     openComposer(expandedCategory ?? 'freeTalk', color)
@@ -1136,21 +1131,6 @@ export function BoardPage() {
                       </ZoneHeaderActions>
                     </ZoneHeader>
 
-<<<<<<< HEAD
-                    <ZoneCanvas ref={zoneRef} $softAccent={meta.softAccent} $expanded={isExpanded}>
-                      {categoryNotes.map((note) => (
-                        <PostItNote
-                          key={note.id}
-                          note={note}
-                          zoneRef={zoneRef}
-                          onMove={moveNote}
-                          onOpen={(openedNote) => setSelectedNoteId(openedNote.id)}
-                          onToggleLike={async (noteId) => {
-                            await toggleLike({ noteId })
-                          }}
-                        />
-                      ))}
-=======
                     {densityMode === 'spread' ? (
                       <ZoneCanvas ref={zoneRef} $softAccent={meta.softAccent} $expanded={isExpanded}>
                         {categoryNotes.map((note) => (
@@ -1162,9 +1142,11 @@ export function BoardPage() {
                             onMove={moveNote}
                             onOpen={handleOpenNote}
                             onOpenMenu={handleOpenMenu}
+                            onToggleLike={async (noteId) => {
+                              await toggleLike({ noteId })
+                            }}
                           />
                         ))}
->>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
 
                         {categoryNotes.length === 0 ? (
                           <SpreadEmptyHint>첫 포스트잇을 붙여보세요.</SpreadEmptyHint>
@@ -1187,6 +1169,9 @@ export function BoardPage() {
                                       mode="stack"
                                       onOpen={handleOpenNote}
                                       onOpenMenu={handleOpenMenu}
+                                      onToggleLike={async (noteId) => {
+                                        await toggleLike({ noteId })
+                                      }}
                                     />
                                   ))}
                                 </StackList>
@@ -1204,6 +1189,9 @@ export function BoardPage() {
                                       mode="stack"
                                       onOpen={handleOpenNote}
                                       onOpenMenu={handleOpenMenu}
+                                      onToggleLike={async (noteId) => {
+                                        await toggleLike({ noteId })
+                                      }}
                                     />
                                   ))}
                                 </StackList>

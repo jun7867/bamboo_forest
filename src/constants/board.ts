@@ -110,13 +110,10 @@ export const INITIAL_BOARD_NOTES: BoardNote[] = [
     author: '익명',
     content: '온보딩 문서 정리 덕분에 이번 주 적응이 훨씬 쉬웠어요.',
     color: 'butter',
-<<<<<<< HEAD
-    likesCount: 3,
-    isLiked: false,
-=======
     isPinned: false,
     sortRank: 1024,
->>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
+    likesCount: 3,
+    isLiked: false,
     comments: [
       {
         id: 'comment-1',
@@ -138,13 +135,10 @@ export const INITIAL_BOARD_NOTES: BoardNote[] = [
     author: '익명',
     content: '주간 회의 안건을 하루 전에 공유하면 더 준비가 쉬울 것 같아요.',
     color: 'sky',
-<<<<<<< HEAD
-    likesCount: 1,
-    isLiked: false,
-=======
     isPinned: false,
     sortRank: 1024,
->>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
+    likesCount: 1,
+    isLiked: false,
     password: '2222',
     createdAt: '2026-03-21T03:20:00.000Z',
     updatedAt: '2026-03-21T03:20:00.000Z',
@@ -157,13 +151,10 @@ export const INITIAL_BOARD_NOTES: BoardNote[] = [
     author: '익명',
     content: '점심 번개나 잡담용 채널이 하나 더 있으면 재밌을 것 같아요.',
     color: 'lavender',
-<<<<<<< HEAD
-    likesCount: 2,
-    isLiked: false,
-=======
     isPinned: false,
     sortRank: 1024,
->>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
+    likesCount: 2,
+    isLiked: false,
     comments: [
       {
         id: 'comment-2',
@@ -185,13 +176,10 @@ export const INITIAL_BOARD_NOTES: BoardNote[] = [
     author: '익명',
     content: '최근 공고 실험 결과는 어디에서 한 번에 보면 좋을까요?',
     color: 'lavender',
-<<<<<<< HEAD
-    likesCount: 0,
-    isLiked: false,
-=======
     isPinned: false,
     sortRank: 1024,
->>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
+    likesCount: 0,
+    isLiked: false,
     password: '4444',
     createdAt: '2026-03-23T01:15:00.000Z',
     updatedAt: '2026-03-23T01:15:00.000Z',

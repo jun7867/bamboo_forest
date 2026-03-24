@@ -6,17 +6,12 @@ import {
   deleteBoardNote,
   fetchBoardNotes,
   moveBoardNote,
-<<<<<<< HEAD
+  reorderBoardNotes,
   toggleBoardNoteLike,
   updateBoardNote,
 } from '../lib/boardNotes'
-import { getBoardVisitorId } from '../lib/boardVisitor'
-=======
-  reorderBoardNotes,
-  updateBoardNote,
-} from '../lib/boardNotes'
 import { applyReorderItemsToNotes, getNextSortRank } from '../lib/boardOrdering'
->>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
+import { getBoardVisitorId } from '../lib/boardVisitor'
 import { isSupabaseConfigured } from '../lib/supabase'
 import type {
   BoardCategory,
@@ -27,11 +22,8 @@ import type {
   CreateBoardNoteCommentInput,
   DeleteBoardNoteInput,
   PostItColor,
-<<<<<<< HEAD
-  ToggleBoardNoteLikeInput,
-=======
   ReorderBoardNoteItem,
->>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
+  ToggleBoardNoteLikeInput,
   UpdateBoardNoteInput,
 } from '../types/board'
 
@@ -111,6 +103,8 @@ function withNewNoteShape(notes: BoardNote[], input: CreateBoardNoteInput): Boar
     rotation: ROTATIONS[notes.length % ROTATIONS.length],
     isPinned: false,
     sortRank: getNextSortRank(notes, input.category),
+    likesCount: 0,
+    isLiked: false,
   }
 }
 
@@ -234,7 +228,14 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       })
 
       set((current) => ({
-        notes: [...current.notes, createdNote],
+        notes: [
+          ...current.notes,
+          {
+            ...createdNote,
+            likesCount: 0,
+            isLiked: false,
+          },
+        ],
         isComposerOpen: false,
         composerCategory: input.category,
         status: null,
@@ -344,10 +345,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
             ? {
                 ...note,
                 isLiked: result.isLiked,
-                likesCount: Math.max(
-                  0,
-                  previousLikesCount + (result.isLiked ? 1 : -1),
-                ),
+                likesCount: Math.max(0, previousLikesCount + (result.isLiked ? 1 : -1)),
               }
             : note,
         ),
@@ -416,7 +414,11 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       set((current) => ({
         notes: current.notes.map((note) =>
           note.id === input.id
-            ? { ...note, ...updatedNote, comments: note.comments ?? updatedNote.comments }
+            ? {
+                ...note,
+                ...updatedNote,
+                comments: note.comments ?? updatedNote.comments,
+              }
             : note,
         ),
         status: null,
@@ -538,9 +540,16 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
           updatedCategoryNotes.map((note: BoardNote) => {
             const previousNote = current.notes.find((currentNote) => currentNote.id === note.id)
 
-            return previousNote?.comments
-              ? { ...note, comments: previousNote.comments }
-              : note
+            if (!previousNote) {
+              return note
+            }
+
+            return {
+              ...note,
+              comments: previousNote.comments,
+              likesCount: previousNote.likesCount,
+              isLiked: previousNote.isLiked,
+            }
           }),
         ),
         status: null,

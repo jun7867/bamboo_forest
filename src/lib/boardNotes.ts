@@ -6,11 +6,8 @@ import type {
   CreateBoardNoteInput,
   CreateBoardNoteCommentInput,
   DeleteBoardNoteInput,
-<<<<<<< HEAD
-  ToggleBoardNoteLikeInput,
-=======
   ReorderBoardNoteItem,
->>>>>>> 8b7714e (feat: add shared board ordering and density toggle)
+  ToggleBoardNoteLikeInput,
   UpdateBoardNoteInput,
 } from '../types/board'
 
@@ -52,10 +49,7 @@ function mapBoardNoteComment(row: BoardNoteCommentRow): BoardNoteComment {
   }
 }
 
-function mapBoardNote(
-  row: BoardNoteRow,
-  comments: BoardNoteComment[] = [],
-): BoardNote {
+function mapBoardNote(row: BoardNoteRow, comments: BoardNoteComment[] = []): BoardNote {
   return {
     id: row.id,
     category: row.category,
@@ -152,18 +146,21 @@ export async function fetchBoardNotes(clientId: string) {
     throw new Error('포스트잇 좋아요 정보를 불러오지 못했어요.')
   }
 
-  const commentsByNoteId = ((commentsResult.error && isMissingCommentsTableError(commentsResult.error))
-    ? []
-    : commentsResult.data ?? [])
+  const commentsByNoteId = (
+    commentsResult.error && isMissingCommentsTableError(commentsResult.error)
+      ? []
+      : commentsResult.data ?? []
+  )
     .map(mapBoardNoteComment)
     .reduce<Record<string, BoardNoteComment[]>>((accumulator, comment) => {
       accumulator[comment.noteId] = [...(accumulator[comment.noteId] ?? []), comment]
       return accumulator
     }, {})
 
-  const likesByNoteId = ((likesResult.error && isMissingLikesTableError(likesResult.error))
-    ? []
-    : (likesResult.data as BoardNoteLikeRow[] | null) ?? []
+  const likesByNoteId = (
+    likesResult.error && isMissingLikesTableError(likesResult.error)
+      ? []
+      : (likesResult.data as BoardNoteLikeRow[] | null) ?? []
   ).reduce<Record<string, { count: number; liked: boolean }>>((accumulator, row) => {
     const current = accumulator[row.note_id] ?? { count: 0, liked: false }
 
@@ -175,13 +172,11 @@ export async function fetchBoardNotes(clientId: string) {
     return accumulator
   }, {})
 
-  return (data ?? []).map((row: BoardNoteRow) =>
-    ({
-      ...mapBoardNote(row, commentsByNoteId[row.id] ?? []),
-      likesCount: likesByNoteId[row.id]?.count ?? 0,
-      isLiked: likesByNoteId[row.id]?.liked ?? false,
-    }),
-  )
+  return (data ?? []).map((row: BoardNoteRow) => ({
+    ...mapBoardNote(row, commentsByNoteId[row.id] ?? []),
+    likesCount: likesByNoteId[row.id]?.count ?? 0,
+    isLiked: likesByNoteId[row.id]?.liked ?? false,
+  }))
 }
 
 export async function createBoardNote(

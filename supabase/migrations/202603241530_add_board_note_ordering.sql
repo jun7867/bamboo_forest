@@ -23,6 +23,7 @@ create function public.list_board_notes()
 returns table (
   id uuid,
   category text,
+  author text,
   content text,
   color text,
   position_x double precision,
@@ -40,6 +41,7 @@ as $$
   select
     board_notes.id,
     board_notes.category,
+    board_notes.author,
     board_notes.content,
     board_notes.color,
     board_notes.position_x,
@@ -54,11 +56,13 @@ as $$
 $$;
 
 drop function if exists public.create_board_note(text, text, text, text, double precision, double precision, double precision);
+drop function if exists public.create_board_note(text, text, text, text, text, double precision, double precision, double precision);
 
 create function public.create_board_note(
   p_category text,
   p_content text,
   p_color text,
+  p_author text,
   p_password text,
   p_position_x double precision,
   p_position_y double precision,
@@ -67,6 +71,7 @@ create function public.create_board_note(
 returns table (
   id uuid,
   category text,
+  author text,
   content text,
   color text,
   position_x double precision,
@@ -93,6 +98,7 @@ begin
 
   insert into public.board_notes (
     category,
+    author,
     content,
     color,
     password,
@@ -104,6 +110,7 @@ begin
   )
   values (
     p_category,
+    coalesce(nullif(btrim(p_author), ''), '익명'),
     btrim(p_content),
     p_color,
     btrim(p_password),
@@ -120,6 +127,7 @@ begin
   select
     inserted_note.id,
     inserted_note.category,
+    inserted_note.author,
     inserted_note.content,
     inserted_note.color,
     inserted_note.position_x,
@@ -142,6 +150,7 @@ create function public.move_board_note(
 returns table (
   id uuid,
   category text,
+  author text,
   content text,
   color text,
   position_x double precision,
@@ -175,6 +184,7 @@ begin
   select
     moved_note.id,
     moved_note.category,
+    moved_note.author,
     moved_note.content,
     moved_note.color,
     moved_note.position_x,
@@ -188,17 +198,20 @@ end;
 $$;
 
 drop function if exists public.update_board_note_with_password(uuid, text, text, text, text);
+drop function if exists public.update_board_note_with_password(uuid, text, text, text, text, text);
 
 create function public.update_board_note_with_password(
   p_note_id uuid,
   p_password text,
   p_category text,
+  p_author text,
   p_content text,
   p_color text
 )
 returns table (
   id uuid,
   category text,
+  author text,
   content text,
   color text,
   position_x double precision,
@@ -244,6 +257,7 @@ begin
   update public.board_notes
   set
     category = p_category,
+    author = coalesce(nullif(btrim(p_author), ''), '익명'),
     content = btrim(p_content),
     color = p_color,
     sort_rank = next_sort_rank
@@ -255,6 +269,7 @@ begin
   select
     updated_note.id,
     updated_note.category,
+    updated_note.author,
     updated_note.content,
     updated_note.color,
     updated_note.position_x,
@@ -274,6 +289,7 @@ create or replace function public.reorder_board_notes(
 returns table (
   id uuid,
   category text,
+  author text,
   content text,
   color text,
   position_x double precision,
@@ -340,6 +356,7 @@ begin
   select
     board_notes.id,
     board_notes.category,
+    board_notes.author,
     board_notes.content,
     board_notes.color,
     board_notes.position_x,
@@ -356,8 +373,8 @@ end;
 $$;
 
 grant execute on function public.list_board_notes() to anon, authenticated;
-grant execute on function public.create_board_note(text, text, text, text, double precision, double precision, double precision) to anon, authenticated;
+grant execute on function public.create_board_note(text, text, text, text, text, double precision, double precision, double precision) to anon, authenticated;
 grant execute on function public.move_board_note(uuid, double precision, double precision) to anon, authenticated;
-grant execute on function public.update_board_note_with_password(uuid, text, text, text, text) to anon, authenticated;
+grant execute on function public.update_board_note_with_password(uuid, text, text, text, text, text) to anon, authenticated;
 grant execute on function public.delete_board_note_with_password(uuid, text) to anon, authenticated;
 grant execute on function public.reorder_board_notes(text, jsonb) to anon, authenticated;
