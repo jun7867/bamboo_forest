@@ -80,7 +80,7 @@ const Eyebrow = styled.span`
 const Title = styled.h1`
   margin: 0;
   font-family: ${({ theme }) => theme.fonts.heading};
-  font-size: clamp(2.5rem, 7vw, 4.8rem);
+  font-size: 44px;
   line-height: 0.98;
   color: ${({ theme }) => theme.colors.textStrong};
 `
@@ -157,7 +157,12 @@ export function LandingPage() {
             말하기 어려운 마음도
             <br />
             편하게 남기는 곳
+            <br />
+          
           </Title>
+          <div style={{fontSize: '60px', fontWeight: '700'}}>
+          (제작자 남준영)
+          </div>
           <Description>
             익명으로도, 이름을 적고도 팀의 의견을 모을 수 있는 대나무숲입니다.
             칭찬, 건의, 질문, 하고 싶은 말을 한 곳에서 자연스럽게 모으고 정리할 수

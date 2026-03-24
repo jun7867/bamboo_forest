@@ -1,0 +1,225 @@
+import { getSupabaseClient } from './supabase'
+import type {
+  BoardNote,
+  BoardNoteComment,
+  BoardPosition,
+  CreateBoardNoteInput,
+  CreateBoardNoteCommentInput,
+  DeleteBoardNoteInput,
+  UpdateBoardNoteInput,
+} from '../types/board'
+
+interface BoardNoteRow {
+  id: string
+  category: BoardNote['category']
+  content: string
+  color: BoardNote['color']
+  position_x: number
+  position_y: number
+  rotation: number
+  created_at: string
+  updated_at: string
+}
+
+interface BoardNoteCommentRow {
+  id: string
+  note_id: string
+  author: string
+  content: string
+  created_at: string
+}
+
+function mapBoardNoteComment(row: BoardNoteCommentRow): BoardNoteComment {
+  return {
+    id: row.id,
+    noteId: row.note_id,
+    author: row.author,
+    content: row.content,
+    createdAt: row.created_at,
+  }
+}
+
+function mapBoardNote(
+  row: BoardNoteRow,
+  comments: BoardNoteComment[] = [],
+): BoardNote {
+  return {
+    id: row.id,
+    category: row.category,
+    content: row.content,
+    color: row.color,
+    position: {
+      x: row.position_x,
+      y: row.position_y,
+    },
+    rotation: row.rotation,
+    comments,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function getSingleRow(data: BoardNoteRow[] | null, fallbackMessage: string) {
+  const row = data?.[0]
+
+  if (!row) {
+    throw new Error(fallbackMessage)
+  }
+
+  return row
+}
+
+function mapBoardError(error: { message?: string } | null, fallbackMessage: string) {
+  if (!error?.message) {
+    return fallbackMessage
+  }
+
+  if (error.message.includes('INVALID_PASSWORD')) {
+    return '비밀번호가 일치하지 않아요.'
+  }
+
+  if (error.message.includes('NOTE_NOT_FOUND')) {
+    return '이미 삭제되었거나 찾을 수 없는 포스트잇이에요.'
+  }
+
+  return fallbackMessage
+}
+
+function isMissingCommentsTableError(error: { message?: string; code?: string } | null) {
+  if (!error) {
+    return false
+  }
+
+  return (
+    error.code === 'PGRST205' ||
+    error.message?.includes('board_note_comments') === true ||
+    error.message?.includes('schema cache') === true
+  )
+}
+
+export async function fetchBoardNotes() {
+  const client = getSupabaseClient()
+  const [{ data, error }, commentsResult] = await Promise.all([
+    client.rpc('list_board_notes'),
+    client
+      .from('board_note_comments')
+      .select('id, note_id, author, content, created_at')
+      .order('created_at', { ascending: true }),
+  ])
+
+  if (error) {
+    throw new Error(mapBoardError(error, '포스트잇을 불러오지 못했어요.'))
+  }
+
+  if (commentsResult.error && !isMissingCommentsTableError(commentsResult.error)) {
+    throw new Error('포스트잇 댓글을 불러오지 못했어요.')
+  }
+
+  const commentsByNoteId = ((commentsResult.error && isMissingCommentsTableError(commentsResult.error))
+    ? []
+    : commentsResult.data ?? [])
+    .map(mapBoardNoteComment)
+    .reduce<Record<string, BoardNoteComment[]>>((accumulator, comment) => {
+      accumulator[comment.noteId] = [...(accumulator[comment.noteId] ?? []), comment]
+      return accumulator
+    }, {})
+
+  return (data ?? []).map((row: BoardNoteRow) =>
+    mapBoardNote(row, commentsByNoteId[row.id] ?? []),
+  )
+}
+
+export async function createBoardNote(
+  input: CreateBoardNoteInput & {
+    position: BoardPosition
+    rotation: number
+  },
+) {
+  const client = getSupabaseClient()
+  const { data, error } = await client.rpc('create_board_note', {
+    p_category: input.category,
+    p_color: input.color,
+    p_content: input.content,
+    p_password: input.password,
+    p_position_x: input.position.x,
+    p_position_y: input.position.y,
+    p_rotation: input.rotation,
+  })
+
+  if (error) {
+    throw new Error(mapBoardError(error, '포스트잇을 저장하지 못했어요.'))
+  }
+
+  return mapBoardNote(getSingleRow(data, '저장된 포스트잇을 확인하지 못했어요.'))
+}
+
+export async function moveBoardNote(id: string, position: BoardPosition) {
+  const client = getSupabaseClient()
+  const { data, error } = await client.rpc('move_board_note', {
+    p_note_id: id,
+    p_position_x: position.x,
+    p_position_y: position.y,
+  })
+
+  if (error) {
+    throw new Error(mapBoardError(error, '포스트잇 위치를 저장하지 못했어요.'))
+  }
+
+  return mapBoardNote(
+    getSingleRow(data, '이동한 포스트잇의 최신 상태를 확인하지 못했어요.'),
+  )
+}
+
+export async function updateBoardNote(input: UpdateBoardNoteInput) {
+  const client = getSupabaseClient()
+  const { data, error } = await client.rpc('update_board_note_with_password', {
+    p_note_id: input.id,
+    p_password: input.password,
+    p_category: input.category,
+    p_color: input.color,
+    p_content: input.content,
+  })
+
+  if (error) {
+    throw new Error(mapBoardError(error, '포스트잇을 수정하지 못했어요.'))
+  }
+
+  return mapBoardNote(
+    getSingleRow(data, '수정된 포스트잇의 최신 상태를 확인하지 못했어요.'),
+  )
+}
+
+export async function deleteBoardNote(input: DeleteBoardNoteInput) {
+  const client = getSupabaseClient()
+  const { error } = await client.rpc('delete_board_note_with_password', {
+    p_note_id: input.id,
+    p_password: input.password,
+  })
+
+  if (error) {
+    throw new Error(mapBoardError(error, '포스트잇을 삭제하지 못했어요.'))
+  }
+}
+
+export async function createBoardNoteComment(input: CreateBoardNoteCommentInput) {
+  const client = getSupabaseClient()
+  const { data, error } = await client
+    .from('board_note_comments')
+    .insert({
+      note_id: input.noteId,
+      author: input.author.trim(),
+      content: input.content.trim(),
+    })
+    .select('id, note_id, author, content, created_at')
+    .single()
+
+  if (error) {
+    if (isMissingCommentsTableError(error)) {
+      throw new Error('댓글 기능을 쓰려면 Supabase 댓글 SQL을 한 번 실행해야 해요.')
+    }
+
+    throw new Error('댓글을 저장하지 못했어요.')
+  }
+
+  return mapBoardNoteComment(data)
+}
