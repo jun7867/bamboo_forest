@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
 import { BOARD_CATEGORY_META, POST_IT_COLOR_META } from '../../constants/board'
 import type { BoardDensityMode, BoardNote } from '../../types/board'
@@ -9,10 +9,18 @@ interface PostItNoteProps {
   note: BoardNote
   mode: BoardDensityMode
   zoneRef?: RefObject<HTMLDivElement | null>
+  virtualCanvasHeight?: number
   onMove?: (id: string, position: BoardNote['position']) => Promise<void>
   onOpen: (note: BoardNote) => void
   onOpenMenu: (note: BoardNote, position: { x: number; y: number }) => void
   onToggleLike: (noteId: string) => Promise<void>
+}
+
+const NOTE_PADDING = 14
+const VIRTUAL_CANVAS_WIDTH = 920
+const FALLBACK_NOTE_SIZE = {
+  width: 164,
+  height: 164,
 }
 
 const NoteCard = styled(motion.article)<{
@@ -170,10 +178,27 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
+function scaleCoordinate(
+  value: number,
+  fromMax: number,
+  toMax: number,
+  padding: number,
+) {
+  if (fromMax <= padding || toMax <= padding) {
+    return clamp(value, padding, toMax)
+  }
+
+  const normalized = (value - padding) / (fromMax - padding)
+  const scaled = padding + normalized * (toMax - padding)
+
+  return clamp(scaled, padding, toMax)
+}
+
 export function PostItNote({
   note,
   mode,
   zoneRef,
+  virtualCanvasHeight,
   onMove,
   onOpen,
   onOpenMenu,
@@ -183,6 +208,71 @@ export function PostItNote({
   const categoryMeta = BOARD_CATEGORY_META[note.category]
   const isDraggingRef = useRef(false)
   const noteRef = useRef<HTMLElement | null>(null)
+  const [zoneSize, setZoneSize] = useState({ width: 0, height: 0 })
+  const [noteSize, setNoteSize] = useState(FALLBACK_NOTE_SIZE)
+
+  useEffect(() => {
+    if (mode !== 'spread') {
+      return
+    }
+
+    const zone = zoneRef?.current
+
+    if (!zone) {
+      return
+    }
+
+    const updateSize = () => {
+      setZoneSize({
+        width: zone.clientWidth,
+        height: zone.clientHeight,
+      })
+    }
+
+    updateSize()
+
+    const observer = new ResizeObserver(updateSize)
+    observer.observe(zone)
+
+    return () => observer.disconnect()
+  }, [mode, zoneRef])
+
+  useEffect(() => {
+    if (mode !== 'spread') {
+      return
+    }
+
+    const target = noteRef.current
+
+    if (!target) {
+      return
+    }
+
+    const updateSize = () => {
+      setNoteSize({
+        width: target.offsetWidth,
+        height: target.offsetHeight,
+      })
+    }
+
+    updateSize()
+
+    const observer = new ResizeObserver(updateSize)
+    observer.observe(target)
+
+    return () => observer.disconnect()
+  }, [mode])
+
+  const actualMaxX = Math.max(NOTE_PADDING, zoneSize.width - noteSize.width - NOTE_PADDING)
+  const actualMaxY = Math.max(NOTE_PADDING, zoneSize.height - noteSize.height - NOTE_PADDING)
+  const targetVirtualCanvasHeight = virtualCanvasHeight ?? 980
+  const virtualMaxX = Math.max(NOTE_PADDING, VIRTUAL_CANVAS_WIDTH - noteSize.width - NOTE_PADDING)
+  const virtualMaxY = Math.max(
+    NOTE_PADDING,
+    targetVirtualCanvasHeight - noteSize.height - NOTE_PADDING,
+  )
+  const renderedX = scaleCoordinate(note.position.x, virtualMaxX, actualMaxX, NOTE_PADDING)
+  const renderedY = scaleCoordinate(note.position.y, virtualMaxY, actualMaxY, NOTE_PADDING)
 
   async function handleDragEnd() {
     const zone = zoneRef?.current
@@ -195,19 +285,20 @@ export function PostItNote({
 
     const zoneRect = zone.getBoundingClientRect()
     const noteRect = target.getBoundingClientRect()
-    const padding = 14
     const nextX = clamp(
       noteRect.left - zoneRect.left,
-      padding,
-      zone.clientWidth - target.offsetWidth - padding,
+      NOTE_PADDING,
+      zone.clientWidth - target.offsetWidth - NOTE_PADDING,
     )
     const nextY = clamp(
       noteRect.top - zoneRect.top,
-      padding,
-      zone.clientHeight - target.offsetHeight - padding,
+      NOTE_PADDING,
+      zone.clientHeight - target.offsetHeight - NOTE_PADDING,
     )
+    const scaledX = scaleCoordinate(nextX, actualMaxX, virtualMaxX, NOTE_PADDING)
+    const scaledY = scaleCoordinate(nextY, actualMaxY, virtualMaxY, NOTE_PADDING)
 
-    await onMove(note.id, { x: nextX, y: nextY })
+    await onMove(note.id, { x: scaledX, y: scaledY })
 
     window.setTimeout(() => {
       isDraggingRef.current = false
@@ -258,7 +349,7 @@ export function PostItNote({
       whileDrag={{ scale: 1.04, zIndex: 30, rotate: note.rotation + 2 }}
       style={
         mode === 'spread'
-          ? { x: note.position.x, y: note.position.y, rotate: note.rotation }
+          ? { x: renderedX, y: renderedY, rotate: note.rotation }
           : undefined
       }
       initial={{ opacity: 0, scale: 0.94 }}

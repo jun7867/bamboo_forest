@@ -21,13 +21,14 @@ import type { BoardCategory, BoardNote, PostItColor } from '../types/board'
 
 const MENU_WIDTH = 220
 const MENU_HEIGHT = 272
+type BoardSortOption = 'manual' | 'latest' | 'oldest' | 'comments'
 
 const Page = styled.main`
   min-height: 100dvh;
   padding: 1.6rem 1.4rem 2.2rem;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    padding: 1rem 0.85rem 1.8rem;
+    padding: 0.85rem 0.75rem 1.4rem;
   }
 `
 
@@ -51,6 +52,7 @@ const Header = styled.header`
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     flex-direction: column;
+    padding: 1rem;
   }
 `
 
@@ -90,6 +92,46 @@ const HeaderActions = styled.div`
   flex-wrap: wrap;
   gap: 0.75rem;
   justify-content: flex-end;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+`
+
+const SortControl = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 3rem;
+  padding: 0.45rem 0.55rem 0.45rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: rgba(255, 255, 255, 0.88);
+  color: ${({ theme }) => theme.colors.textStrong};
+  font-size: 0.92rem;
+  font-weight: 700;
+
+  span {
+    white-space: nowrap;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
+    justify-content: space-between;
+  }
+`
+
+const SortSelect = styled.select`
+  min-height: 2.15rem;
+  padding: 0 2rem 0 0.75rem;
+  border-radius: 999px;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: rgba(255, 255, 255, 0.94);
+  color: ${({ theme }) => theme.colors.textStrong};
+  font: inherit;
+  appearance: none;
 `
 
 const PrimaryButton = styled.button`
@@ -100,6 +142,10 @@ const PrimaryButton = styled.button`
   color: #ffffff;
   font-weight: 700;
   box-shadow: 0 16px 28px rgba(78, 141, 84, 0.24);
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
+  }
 `
 
 const SecondaryLink = styled(Link)`
@@ -114,6 +160,10 @@ const SecondaryLink = styled(Link)`
   color: ${({ theme }) => theme.colors.textStrong};
   text-decoration: none;
   font-weight: 700;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
+  }
 `
 
 const StatusBanner = styled.div<{ $tone: 'info' | 'error' }>`
@@ -171,6 +221,11 @@ const ToolboxCard = styled.div`
   border: 1px solid ${({ theme }) => theme.colors.borderStrong};
   background: rgba(255, 255, 255, 0.86);
   box-shadow: ${({ theme }) => theme.shadows.soft};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    padding: 0.85rem;
+    border-radius: ${({ theme }) => theme.radii.lg};
+  }
 `
 
 const ToolboxTitle = styled.h2`
@@ -192,6 +247,11 @@ const PaletteGrid = styled.div`
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.55rem;
   margin-top: 0.85rem;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
 `
 
 const SwatchButton = styled.button<{ $background: string; $border: string }>`
@@ -227,6 +287,10 @@ const CategoryRow = styled.button<{ $accent: string }>`
   border: 1px solid ${({ theme }) => theme.colors.borderStrong};
   background: rgba(255, 255, 255, 0.84);
   text-align: left;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    padding: 0.7rem;
+  }
 
   span:last-child {
     min-width: 1.9rem;
@@ -265,6 +329,11 @@ const BoardSurface = styled.div`
     linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 244, 236, 0.96));
   background-size: 18px 18px, 100% 100%;
   box-shadow: ${({ theme }) => theme.shadows.card};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    padding: 0.85rem;
+    border-radius: ${({ theme }) => theme.radii.lg};
+  }
 `
 
 const BoardGrid = styled.div<{ $expanded: boolean }>`
@@ -276,12 +345,16 @@ const BoardGrid = styled.div<{ $expanded: boolean }>`
   @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
     grid-template-columns: 1fr;
   }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    gap: 1rem;
+  }
 `
 
 const ZoneCard = styled.section<{ $expanded: boolean }>`
   display: grid;
   gap: 1rem;
-  min-height: ${({ $expanded }) => ($expanded ? 'calc(100dvh - 15rem)' : 'auto')};
+  min-height: ${({ $expanded }) => ($expanded ? 'calc(100dvh - 9rem)' : 'auto')};
 `
 
 const ZoneHeader = styled.div`
@@ -292,6 +365,7 @@ const ZoneHeader = styled.div`
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     flex-direction: column;
+    align-items: stretch;
   }
 `
 
@@ -305,6 +379,10 @@ const ZoneTitle = styled.h2`
   font-family: ${({ theme }) => theme.fonts.heading};
   font-size: 1.55rem;
   color: ${({ theme }) => theme.colors.textStrong};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    font-size: 1.35rem;
+  }
 `
 
 const ZoneDescription = styled.p`
@@ -319,6 +397,11 @@ const ZoneHeaderActions = styled.div`
   gap: 0.6rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
+    justify-content: space-between;
+  }
 `
 
 const DensityToggle = styled.div`
@@ -374,9 +457,14 @@ const FocusIcon = styled.svg`
   display: block;
 `
 
-const ZoneCanvas = styled.div<{ $softAccent: string; $expanded: boolean }>`
+const ZoneCanvas = styled.div<{
+  $softAccent: string
+  $expanded: boolean
+  $expandedHeight: number
+}>`
   position: relative;
-  min-height: ${({ $expanded }) => ($expanded ? 'calc(100dvh - 19rem)' : '36rem')};
+  min-height: ${({ $expanded, $expandedHeight }) =>
+    $expanded ? `${$expandedHeight}px` : '36rem'};
   border-radius: ${({ theme }) => theme.radii.xl};
   border: 1px solid rgba(80, 115, 61, 0.12);
   background:
@@ -385,7 +473,9 @@ const ZoneCanvas = styled.div<{ $softAccent: string; $expanded: boolean }>`
   overflow: hidden;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    min-height: ${({ $expanded }) => ($expanded ? 'calc(100dvh - 17rem)' : '28rem')};
+    min-height: ${({ $expanded, $expandedHeight }) =>
+      $expanded ? `${Math.max(760, $expandedHeight - 120)}px` : '24rem'};
+    border-radius: ${({ theme }) => theme.radii.lg};
   }
 `
 
@@ -574,6 +664,10 @@ const StatsHeader = styled.div`
     color: ${({ theme }) => theme.colors.textMuted};
     line-height: 1.7;
   }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    padding: 0.7rem 0.2rem 0;
+  }
 `
 
 const StatsGrid = styled.div`
@@ -602,6 +696,12 @@ const StatsCard = styled.section<{ $span?: number }>`
 
   @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
     grid-column: span 1;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    gap: 0.8rem;
+    padding: 0.95rem;
+    border-radius: ${({ theme }) => theme.radii.lg};
   }
 `
 
@@ -833,6 +933,42 @@ function getNotePreview(content: string) {
   return content.length > 56 ? `${content.slice(0, 56)}...` : content
 }
 
+function getExpandedCanvasHeight(notePositions: Array<{ x: number; y: number }>) {
+  const NOTE_HEIGHT = 220
+  const BASE_HEIGHT = 980
+  const BOTTOM_PADDING = 120
+
+  const maxBottom = notePositions.reduce((currentMax, position) => {
+    return Math.max(currentMax, position.y + NOTE_HEIGHT)
+  }, 0)
+
+  return Math.max(BASE_HEIGHT, maxBottom + BOTTOM_PADDING)
+}
+
+function sortBoardNotes(notes: BoardNote[], sortOption: BoardSortOption) {
+  if (sortOption === 'manual') {
+    return notes
+  }
+
+  const sortedNotes = [...notes]
+
+  if (sortOption === 'comments') {
+    sortedNotes.sort(
+      (left, right) => (right.comments?.length ?? 0) - (left.comments?.length ?? 0),
+    )
+    return sortedNotes
+  }
+
+  sortedNotes.sort((left, right) => {
+    const leftTime = new Date(left.createdAt ?? 0).getTime()
+    const rightTime = new Date(right.createdAt ?? 0).getTime()
+
+    return sortOption === 'latest' ? rightTime - leftTime : leftTime - rightTime
+  })
+
+  return sortedNotes
+}
+
 export function BoardPage() {
   const notes = useBoardStore((state) => state.notes)
   const densityByCategory = useBoardStore((state) => state.densityByCategory)
@@ -857,6 +993,7 @@ export function BoardPage() {
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
   const [expandedCategory, setExpandedCategory] = useState<BoardCategory | null>(null)
   const [menuState, setMenuState] = useState<NoteMenuState | null>(null)
+  const [sortOption, setSortOption] = useState<BoardSortOption>('manual')
 
   const praiseRef = useRef<HTMLDivElement | null>(null)
   const suggestionRef = useRef<HTMLDivElement | null>(null)
@@ -941,6 +1078,19 @@ export function BoardPage() {
           </TitleBlock>
 
           <HeaderActions>
+            <SortControl>
+              <span>정렬</span>
+              <SortSelect
+                value={sortOption}
+                onChange={(event) => setSortOption(event.target.value as BoardSortOption)}
+                aria-label="포스트잇 정렬"
+              >
+                <option value="manual">자유배치</option>
+                <option value="latest">최신순</option>
+                <option value="oldest">오래된순</option>
+                <option value="comments">댓글 많은순</option>
+              </SortSelect>
+            </SortControl>
             <PrimaryButton type="button" onClick={() => openComposer(expandedCategory ?? undefined)}>
               포스트잇 추가
             </PrimaryButton>
@@ -1058,13 +1208,17 @@ export function BoardPage() {
             <BoardGrid $expanded={expandedCategory !== null}>
               {visibleCategories.map((category) => {
                 const meta = BOARD_CATEGORY_META[category]
-                const categoryNotes = notesByCategory[category]
-                const orderedNotes = sortNotesBySharedOrder(categoryNotes)
+                const baseCategoryNotes = notesByCategory[category]
+                const spreadNotes = sortBoardNotes(baseCategoryNotes, sortOption)
+                const orderedNotes = sortNotesBySharedOrder(baseCategoryNotes)
                 const pinnedNotes = orderedNotes.filter((note) => note.isPinned)
                 const regularNotes = orderedNotes.filter((note) => !note.isPinned)
                 const densityMode = densityByCategory[category] ?? 'spread'
                 const zoneRef = zoneRefs[category]
                 const isExpanded = expandedCategory === category
+                const expandedCanvasHeight = getExpandedCanvasHeight(
+                  baseCategoryNotes.map((note) => note.position),
+                )
 
                 return (
                   <ZoneCard key={category} $expanded={isExpanded}>
@@ -1120,7 +1274,7 @@ export function BoardPage() {
                             </FocusIcon>
                           )}
                         </FocusButton>
-                        <ZoneBadge $accent={meta.accent}>{categoryNotes.length}</ZoneBadge>
+                        <ZoneBadge $accent={meta.accent}>{baseCategoryNotes.length}</ZoneBadge>
                         <MiniAddButton
                           type="button"
                           $accent={meta.accent}
@@ -1132,13 +1286,19 @@ export function BoardPage() {
                     </ZoneHeader>
 
                     {densityMode === 'spread' ? (
-                      <ZoneCanvas ref={zoneRef} $softAccent={meta.softAccent} $expanded={isExpanded}>
-                        {categoryNotes.map((note) => (
+                      <ZoneCanvas
+                        ref={zoneRef}
+                        $softAccent={meta.softAccent}
+                        $expanded={isExpanded}
+                        $expandedHeight={expandedCanvasHeight}
+                      >
+                        {spreadNotes.map((note) => (
                           <PostItNote
                             key={note.id}
                             note={note}
                             mode="spread"
                             zoneRef={zoneRef}
+                            virtualCanvasHeight={expandedCanvasHeight}
                             onMove={moveNote}
                             onOpen={handleOpenNote}
                             onOpenMenu={handleOpenMenu}
@@ -1148,13 +1308,13 @@ export function BoardPage() {
                           />
                         ))}
 
-                        {categoryNotes.length === 0 ? (
+                        {baseCategoryNotes.length === 0 ? (
                           <SpreadEmptyHint>첫 포스트잇을 붙여보세요.</SpreadEmptyHint>
                         ) : null}
                       </ZoneCanvas>
                     ) : (
                       <StackCanvas $softAccent={meta.softAccent} $expanded={isExpanded}>
-                        {categoryNotes.length === 0 ? (
+                        {baseCategoryNotes.length === 0 ? (
                           <EmptyHint>첫 포스트잇을 붙여보세요.</EmptyHint>
                         ) : (
                           <>

@@ -1,5 +1,7 @@
 import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import styled from 'styled-components'
+import { TopMarqueeBanner } from './components/common/TopMarqueeBanner'
 
 const LandingPage = lazy(async () => {
   const module = await import('./pages/LandingPage')
@@ -27,15 +29,23 @@ function RouteLoadingFallback() {
   )
 }
 
+const AppFrame = styled.div`
+  min-height: 100dvh;
+  padding-top: 2.75rem;
+`
+
 function App() {
   return (
-    <Suspense fallback={<RouteLoadingFallback />}>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/board" element={<BoardPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+    <AppFrame>
+      <TopMarqueeBanner />
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/board" element={<BoardPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </AppFrame>
   )
 }
 

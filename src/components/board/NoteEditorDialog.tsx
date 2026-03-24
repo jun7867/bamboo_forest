@@ -414,7 +414,7 @@ const CommentSubmitButton = styled.button`
   font-weight: 700;
 `
 
-const MAX_NOTE_LENGTH = 120
+const MAX_NOTE_LENGTH = 1000
 const MAX_COMMENT_LENGTH = 240
 
 function formatCommentTime(value: string) {
