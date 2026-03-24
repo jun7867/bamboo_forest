@@ -115,6 +115,35 @@ Supabase 환경에서 두 개의 브라우저 창을 열고 같은 `/board`를 �
 3. 창 A에서 새 포스트잇을 추가하면 해당 카테고리의 마지막 순서로 들어가는지 확인합니다.
 4. 포스트잇 카테고리를 변경하면 새 카테고리 내 마지막 순서로 이동하는지 확인합니다.
 
+## Agentation
+
+개발 환경에서는 Agentation 툴바가 자동으로 붙습니다. 프로덕션 빌드에는 렌더되지 않습니다.
+
+### Local Agentation Setup
+
+1. 앱 실행
+
+```bash
+npm run dev
+```
+
+2. Agentation MCP 서버 실행
+
+```bash
+npm run agentation:mcp
+```
+
+3. 설정 진단
+
+```bash
+npm run agentation:doctor
+codex mcp list
+```
+
+- 기본 엔드포인트는 `http://localhost:4747` 입니다.
+- 다른 포트를 쓰려면 앱 실행 전에 `VITE_AGENTATION_ENDPOINT` 환경변수를 지정합니다.
+- Codex 로컬 MCP는 `agentation-mcp server` 기준으로 연결하면 됩니다.
+
 ## Notes
 
 - 정렬/고정 상태는 Supabase를 사용할 때 공용 상태로 저장됩니다.
