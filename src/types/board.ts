@@ -16,10 +16,13 @@ export interface BoardPosition {
 export interface BoardNote {
   id: string
   category: BoardCategory
+  author: string
   content: string
   color: PostItColor
   position: BoardPosition
   rotation: number
+  likesCount?: number
+  isLiked?: boolean
   comments?: BoardNoteComment[]
   password?: string
   createdAt?: string
@@ -36,6 +39,7 @@ export interface BoardNoteComment {
 
 export interface CreateBoardNoteInput {
   category: BoardCategory
+  author: string
   content: string
   color: PostItColor
   password: string
@@ -44,6 +48,7 @@ export interface CreateBoardNoteInput {
 export interface UpdateBoardNoteInput {
   id: string
   category: BoardCategory
+  author: string
   content: string
   color: PostItColor
   password: string
@@ -58,4 +63,10 @@ export interface CreateBoardNoteCommentInput {
   noteId: string
   author: string
   content: string
+}
+
+export interface ToggleBoardNoteLikeInput {
+  noteId: string
+  clientId: string
+  isLiked: boolean
 }

@@ -6,8 +6,10 @@ import {
   deleteBoardNote,
   fetchBoardNotes,
   moveBoardNote,
+  toggleBoardNoteLike,
   updateBoardNote,
 } from '../lib/boardNotes'
+import { getBoardVisitorId } from '../lib/boardVisitor'
 import { isSupabaseConfigured } from '../lib/supabase'
 import type {
   BoardCategory,
@@ -17,6 +19,7 @@ import type {
   CreateBoardNoteCommentInput,
   DeleteBoardNoteInput,
   PostItColor,
+  ToggleBoardNoteLikeInput,
   UpdateBoardNoteInput,
 } from '../types/board'
 
@@ -43,6 +46,9 @@ interface BoardStore {
   addNote: (input: CreateBoardNoteInput) => Promise<{ ok: boolean; message?: string }>
   addComment: (
     input: CreateBoardNoteCommentInput,
+  ) => Promise<{ ok: boolean; message?: string }>
+  toggleLike: (
+    input: Pick<ToggleBoardNoteLikeInput, 'noteId'>,
   ) => Promise<{ ok: boolean; message?: string }>
   updateNote: (input: UpdateBoardNoteInput) => Promise<{ ok: boolean; message?: string }>
   deleteNote: (input: DeleteBoardNoteInput) => Promise<{ ok: boolean; message?: string }>
@@ -134,7 +140,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     set({ isLoading: true, status: null })
 
     try {
-      const notes = await fetchBoardNotes()
+      const notes = await fetchBoardNotes(getBoardVisitorId())
 
       set({
         notes,
@@ -257,6 +263,73 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       return { ok: false, message }
     }
   },
+  toggleLike: async ({ noteId }) => {
+    const state = get()
+    const target = state.notes.find((note) => note.id === noteId)
+
+    if (!target) {
+      return { ok: false, message: '포스트잇을 찾을 수 없어요.' }
+    }
+
+    const nextLiked = !(target.isLiked ?? false)
+    const previousLikesCount = target.likesCount ?? 0
+    const nextLikesCount = Math.max(0, previousLikesCount + (nextLiked ? 1 : -1))
+
+    set((current) => ({
+      notes: current.notes.map((note) =>
+        note.id === noteId
+          ? { ...note, isLiked: nextLiked, likesCount: nextLikesCount }
+          : note,
+      ),
+      status: null,
+    }))
+
+    if (state.dataSource === 'demo' || !isSupabaseConfigured) {
+      return { ok: true }
+    }
+
+    try {
+      const result = await toggleBoardNoteLike({
+        noteId,
+        clientId: getBoardVisitorId(),
+        isLiked: target.isLiked ?? false,
+      })
+
+      set((current) => ({
+        notes: current.notes.map((note) =>
+          note.id === noteId
+            ? {
+                ...note,
+                isLiked: result.isLiked,
+                likesCount: Math.max(
+                  0,
+                  previousLikesCount + (result.isLiked ? 1 : -1),
+                ),
+              }
+            : note,
+        ),
+      }))
+
+      return { ok: true }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : '좋아요 저장에 실패했어요.'
+
+      set((current) => ({
+        notes: current.notes.map((note) =>
+          note.id === noteId
+            ? { ...note, isLiked: target.isLiked ?? false, likesCount: previousLikesCount }
+            : note,
+        ),
+        status: {
+          tone: 'error',
+          message,
+        },
+      }))
+
+      return { ok: false, message }
+    }
+  },
   updateNote: async (input) => {
     const state = get()
 
@@ -274,6 +347,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
             ? {
                 ...note,
                 category: input.category,
+                author: input.author,
                 color: input.color,
                 content: input.content,
               }

@@ -18,6 +18,7 @@ import type {
 interface NoteEditorDialogProps {
   note: BoardNote
   onClose: () => void
+  onToggleLike: (noteId: string) => Promise<{ ok: boolean; message?: string }>
   onSave: (input: UpdateBoardNoteInput) => Promise<{ ok: boolean; message?: string }>
   onDelete: (input: DeleteBoardNoteInput) => Promise<{ ok: boolean; message?: string }>
   onAddComment: (
@@ -200,6 +201,20 @@ const PasswordInput = styled.input`
   }
 `
 
+const TextInput = styled.input`
+  min-height: 3rem;
+  padding: 0 0.95rem;
+  border-radius: ${({ theme }) => theme.radii.lg};
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: rgba(255, 255, 255, 0.92);
+  color: ${({ theme }) => theme.colors.textStrong};
+
+  &:focus {
+    outline: 2px solid rgba(117, 171, 99, 0.28);
+    outline-offset: 2px;
+  }
+`
+
 const HelperText = styled.p`
   margin: 0;
   color: ${({ theme }) => theme.colors.textMuted};
@@ -274,6 +289,27 @@ const Divider = styled.div`
 const CommentSection = styled.section`
   display: grid;
   gap: 0.9rem;
+`
+
+const ReactionRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+`
+
+const LikeActionButton = styled.button<{ $active: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.55rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  background: ${({ $active }) =>
+    $active ? 'rgba(255, 106, 129, 0.18)' : 'rgba(255, 255, 255, 0.85)'};
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  color: ${({ theme }) => theme.colors.textStrong};
+  font-weight: 700;
 `
 
 const CommentHeader = styled.div`
@@ -393,10 +429,12 @@ function formatCommentTime(value: string) {
 export function NoteEditorDialog({
   note,
   onClose,
+  onToggleLike,
   onSave,
   onDelete,
   onAddComment,
 }: NoteEditorDialogProps) {
+  const [author, setAuthor] = useState(note.author)
   const [content, setContent] = useState(note.content)
   const [category, setCategory] = useState<BoardCategory>(note.category)
   const [color, setColor] = useState<PostItColor>(note.color)
@@ -404,6 +442,7 @@ export function NoteEditorDialog({
   const [commentDraft, setCommentDraft] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false)
+  const [isLikeSubmitting, setIsLikeSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [commentErrorMessage, setCommentErrorMessage] = useState<string | null>(null)
 
@@ -416,6 +455,7 @@ export function NoteEditorDialog({
     const result = await onSave({
       id: note.id,
       category,
+      author: author.trim() || '익명',
       color,
       content: content.trim(),
       password: password.trim(),
@@ -484,6 +524,16 @@ export function NoteEditorDialog({
     setCommentDraft('')
   }
 
+  async function handleLikeToggle() {
+    setIsLikeSubmitting(true)
+    const result = await onToggleLike(note.id)
+    setIsLikeSubmitting(false)
+
+    if (!result.ok) {
+      setCommentErrorMessage(result.message ?? '좋아요 처리에 실패했어요.')
+    }
+  }
+
   return (
     <Backdrop
       initial={{ opacity: 0 }}
@@ -510,6 +560,17 @@ export function NoteEditorDialog({
         </Header>
 
         <Form onSubmit={handleSubmit}>
+          <LabelBlock>
+            이름
+            <TextInput
+              type="text"
+              placeholder="익명"
+              value={author}
+              maxLength={40}
+              onChange={(event) => setAuthor(event.target.value)}
+            />
+          </LabelBlock>
+
           <LabelBlock>
             메모 내용
             <Textarea
@@ -594,6 +655,19 @@ export function NoteEditorDialog({
         <Divider />
 
         <CommentSection>
+          <ReactionRow>
+            <LikeActionButton
+              type="button"
+              $active={note.isLiked ?? false}
+              disabled={isLikeSubmitting}
+              onClick={handleLikeToggle}
+            >
+              <span>{note.isLiked ? '♥' : '♡'}</span>
+              <span>좋아요 {note.likesCount ?? 0}</span>
+            </LikeActionButton>
+            <HelperText>댓글 {note.comments?.length ?? 0}개</HelperText>
+          </ReactionRow>
+
           <CommentHeader>
             <h3>댓글</h3>
             <span>{note.comments?.length ?? 0}개</span>

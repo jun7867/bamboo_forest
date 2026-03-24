@@ -193,6 +193,20 @@ const PasswordInput = styled.input`
   }
 `
 
+const TextInput = styled.input`
+  min-height: 3rem;
+  padding: 0 0.95rem;
+  border-radius: ${({ theme }) => theme.radii.lg};
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: rgba(255, 255, 255, 0.92);
+  color: ${({ theme }) => theme.colors.textStrong};
+
+  &:focus {
+    outline: 2px solid rgba(117, 171, 99, 0.28);
+    outline-offset: 2px;
+  }
+`
+
 const Footer = styled.div`
   display: flex;
   align-items: center;
@@ -256,6 +270,7 @@ export function NoteComposer({
   onClose,
   onSubmit,
 }: NoteComposerProps) {
+  const [author, setAuthor] = useState('익명')
   const [content, setContent] = useState('')
   const [category, setCategory] = useState<BoardCategory>(initialCategory)
   const [color, setColor] = useState<PostItColor>(initialColor)
@@ -267,6 +282,7 @@ export function NoteComposer({
     event.preventDefault()
 
     const trimmedContent = content.trim()
+    const trimmedAuthor = author.trim() || '익명'
     const trimmedPassword = password.trim()
 
     if (!trimmedContent || !trimmedPassword) {
@@ -278,6 +294,7 @@ export function NoteComposer({
 
     const result = await onSubmit({
       category,
+      author: trimmedAuthor,
       color,
       content: trimmedContent,
       password: trimmedPassword,
@@ -316,6 +333,17 @@ export function NoteComposer({
         </Header>
 
         <Form onSubmit={handleSubmit}>
+          <LabelBlock>
+            이름
+            <TextInput
+              type="text"
+              placeholder="익명"
+              value={author}
+              maxLength={40}
+              onChange={(event) => setAuthor(event.target.value)}
+            />
+          </LabelBlock>
+
           <LabelBlock>
             메모 내용
             <Textarea
