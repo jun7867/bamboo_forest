@@ -41,7 +41,8 @@ function App() {
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/board" element={<BoardPage />} />
+          <Route path="/board" element={<BoardPage version="v2" />} />
+          <Route path="/board/v1" element={<BoardPage version="v1" />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

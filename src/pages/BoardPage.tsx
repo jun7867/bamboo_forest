@@ -9,6 +9,7 @@ import { NoteEditorDialog } from '../components/board/NoteEditorDialog'
 import { PostItNote } from '../components/board/PostItNote'
 import { LiveChatPanel } from '../components/chat/LiveChatPanel'
 import { APP_VERSION_LABEL } from '../config/appVersion'
+import { ARCHIVE_BOARDS, V2_CUTOFF_DATE } from '../config/boardVersion'
 import {
   BOARD_CATEGORY_META,
   BOARD_CATEGORY_ORDER,
@@ -897,6 +898,92 @@ const TrendCard = styled.div`
   }
 `
 
+const ArchiveNoticeBanner = styled.div`
+  padding: 0.9rem 1.1rem;
+  border-radius: ${({ theme }) => theme.radii.lg};
+  border: 1px solid rgba(168, 139, 76, 0.22);
+  background: rgba(255, 251, 228, 0.94);
+  color: ${({ theme }) => theme.colors.textMuted};
+  font-size: 0.92rem;
+  line-height: 1.6;
+`
+
+const ArchiveDropdownWrap = styled.div`
+  position: relative;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
+  }
+`
+
+const ArchiveDropdownTrigger = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0.85rem 1.05rem;
+  border-radius: 999px;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: rgba(255, 255, 255, 0.88);
+  color: ${({ theme }) => theme.colors.textStrong};
+  font-weight: 700;
+  white-space: nowrap;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    width: 100%;
+    justify-content: space-between;
+  }
+`
+
+const ArchiveDropdownChevron = styled.svg<{ $open: boolean }>`
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+  transform: ${({ $open }) => ($open ? 'rotate(180deg)' : 'none')};
+`
+
+const ArchiveDropdownMenu = styled.div`
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 50;
+  min-width: 13rem;
+  padding: 0.35rem;
+  border-radius: ${({ theme }) => theme.radii.lg};
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: ${({ theme }) => theme.shadows.card};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    left: 0;
+    right: auto;
+  }
+`
+
+const ArchiveDropdownItem = styled(Link)`
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.72rem 0.85rem;
+  border-radius: 0.65rem;
+  text-decoration: none;
+  color: ${({ theme }) => theme.colors.textStrong};
+  transition: background 0.14s ease;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.primarySoft};
+  }
+
+  strong {
+    font-size: 0.9rem;
+  }
+
+  small {
+    color: ${({ theme }) => theme.colors.textMuted};
+    font-size: 0.8rem;
+  }
+`
+
 interface NoteMenuState {
   noteId: string
   x: number
@@ -969,7 +1056,11 @@ function sortBoardNotes(notes: BoardNote[], sortOption: BoardSortOption) {
   return sortedNotes
 }
 
-export function BoardPage() {
+interface BoardPageProps {
+  version?: 'v1' | 'v2'
+}
+
+export function BoardPage({ version = 'v2' }: BoardPageProps) {
   const notes = useBoardStore((state) => state.notes)
   const densityByCategory = useBoardStore((state) => state.densityByCategory)
   const isComposerOpen = useBoardStore((state) => state.isComposerOpen)
@@ -990,10 +1081,14 @@ export function BoardPage() {
   const moveNote = useBoardStore((state) => state.moveNote)
   const reorderNotes = useBoardStore((state) => state.reorderNotes)
 
+  const isArchive = version === 'v1'
+
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
   const [expandedCategory, setExpandedCategory] = useState<BoardCategory | null>(null)
   const [menuState, setMenuState] = useState<NoteMenuState | null>(null)
   const [sortOption, setSortOption] = useState<BoardSortOption>('manual')
+  const [isArchiveMenuOpen, setIsArchiveMenuOpen] = useState(false)
+  const archiveMenuRef = useRef<HTMLDivElement | null>(null)
 
   const praiseRef = useRef<HTMLDivElement | null>(null)
   const suggestionRef = useRef<HTMLDivElement | null>(null)
@@ -1012,28 +1107,47 @@ export function BoardPage() {
   }, [loadNotes])
 
   useEffect(() => {
+    if (isArchive) return
     const pollingId = window.setInterval(() => {
       void loadNotes(true)
     }, 30000)
 
     return () => window.clearInterval(pollingId)
-  }, [loadNotes])
+  }, [loadNotes, isArchive])
+
+  useEffect(() => {
+    if (!isArchiveMenuOpen) return
+    function handleClickOutside(event: MouseEvent) {
+      if (archiveMenuRef.current && !archiveMenuRef.current.contains(event.target as Node)) {
+        setIsArchiveMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isArchiveMenuOpen])
 
   const visibleCategories = expandedCategory
     ? BOARD_CATEGORY_ORDER.filter((category) => category === expandedCategory)
     : BOARD_CATEGORY_ORDER
 
-  const notesByCategory = useMemo(() => getCategoryMap(notes), [notes])
+  const filteredNotes = useMemo(() => {
+    if (isArchive) {
+      return notes.filter((note) => new Date(note.createdAt ?? 0) < V2_CUTOFF_DATE)
+    }
+    return notes.filter((note) => new Date(note.createdAt ?? 0) >= V2_CUTOFF_DATE)
+  }, [notes, isArchive])
+
+  const notesByCategory = useMemo(() => getCategoryMap(filteredNotes), [filteredNotes])
 
   const selectedNote = useMemo(
-    () => notes.find((note) => note.id === selectedNoteId) ?? null,
-    [notes, selectedNoteId],
+    () => filteredNotes.find((note) => note.id === selectedNoteId) ?? null,
+    [filteredNotes, selectedNoteId],
   )
   const menuNote = useMemo(
-    () => notes.find((note) => note.id === menuState?.noteId) ?? null,
-    [menuState?.noteId, notes],
+    () => filteredNotes.find((note) => note.id === menuState?.noteId) ?? null,
+    [menuState?.noteId, filteredNotes],
   )
-  const insights = useMemo(() => getBoardInsights(notes), [notes])
+  const insights = useMemo(() => getBoardInsights(filteredNotes), [filteredNotes])
 
   function handlePaletteCreate(color: PostItColor) {
     openComposer(expandedCategory ?? 'freeTalk', color)
@@ -1072,12 +1186,45 @@ export function BoardPage() {
       <Shell>
         <Header>
           <TitleBlock>
-            <Eyebrow>채용혁신개발팀</Eyebrow>
-            <PageTitle>하고싶은거 다 말해~</PageTitle>
+            <Eyebrow>{isArchive ? '아카이브' : '채용혁신개발팀'}</Eyebrow>
+            <PageTitle>{isArchive ? '지난 대나무숲' : '하고싶은거 다 말해~'}</PageTitle>
             <Description>제작자 남준영 v.{APP_VERSION_LABEL}</Description>
           </TitleBlock>
 
           <HeaderActions>
+            {!isArchive && (
+              <ArchiveDropdownWrap ref={archiveMenuRef}>
+                <ArchiveDropdownTrigger
+                  type="button"
+                  onClick={() => setIsArchiveMenuOpen((prev) => !prev)}
+                >
+                  지난 대나무숲 다시보기
+                  <ArchiveDropdownChevron
+                    $open={isArchiveMenuOpen}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </ArchiveDropdownChevron>
+                </ArchiveDropdownTrigger>
+                {isArchiveMenuOpen && (
+                  <ArchiveDropdownMenu>
+                    {ARCHIVE_BOARDS.map((board) => (
+                      <ArchiveDropdownItem
+                        key={board.id}
+                        to={board.path}
+                        onClick={() => setIsArchiveMenuOpen(false)}
+                      >
+                        <strong>{board.label}</strong>
+                        <small>{board.period}</small>
+                      </ArchiveDropdownItem>
+                    ))}
+                  </ArchiveDropdownMenu>
+                )}
+              </ArchiveDropdownWrap>
+            )}
             <SortControl>
               <span>정렬</span>
               <SortSelect
@@ -1091,10 +1238,16 @@ export function BoardPage() {
                 <option value="comments">댓글 많은순</option>
               </SortSelect>
             </SortControl>
-            <PrimaryButton type="button" onClick={() => openComposer(expandedCategory ?? undefined)}>
-              포스트잇 추가
-            </PrimaryButton>
-            <SecondaryLink to="/">홈으로</SecondaryLink>
+            {!isArchive && (
+              <PrimaryButton type="button" onClick={() => openComposer(expandedCategory ?? undefined)}>
+                포스트잇 추가
+              </PrimaryButton>
+            )}
+            {isArchive ? (
+              <SecondaryLink to="/board">현재 대나무숲으로</SecondaryLink>
+            ) : (
+              <SecondaryLink to="/">홈으로</SecondaryLink>
+            )}
           </HeaderActions>
         </Header>
 
@@ -1106,6 +1259,12 @@ export function BoardPage() {
             </StatusClose>
           </StatusBanner>
         ) : null}
+
+        {isArchive && (
+          <ArchiveNoticeBanner>
+            이 페이지는 읽기 전용 아카이브예요. 새 포스트잇을 추가하거나 수정·삭제할 수 없어요.
+          </ArchiveNoticeBanner>
+        )}
 
         <Workspace>
           <Toolbox>
@@ -1125,7 +1284,7 @@ export function BoardPage() {
                     $border={meta.border}
                     title={`${meta.label} 포스트잇 만들기`}
                     aria-label={`${meta.label} 포스트잇 만들기`}
-                    onClick={() => handlePaletteCreate(key as PostItColor)}
+                    onClick={isArchive ? undefined : () => handlePaletteCreate(key as PostItColor)}
                   />
                 ))}
               </PaletteGrid>
@@ -1143,7 +1302,7 @@ export function BoardPage() {
                       key={category}
                       type="button"
                       $accent={meta.accent}
-                      onClick={() => openComposer(category)}
+                      onClick={isArchive ? undefined : () => openComposer(category)}
                     >
                       <CategoryLabel>
                         <strong>{meta.label}</strong>
@@ -1278,7 +1437,7 @@ export function BoardPage() {
                         <MiniAddButton
                           type="button"
                           $accent={meta.accent}
-                          onClick={() => openComposer(category)}
+                          onClick={isArchive ? undefined : () => openComposer(category)}
                         >
                           + 추가
                         </MiniAddButton>
@@ -1299,10 +1458,10 @@ export function BoardPage() {
                             mode="spread"
                             zoneRef={zoneRef}
                             virtualCanvasHeight={expandedCanvasHeight}
-                            onMove={moveNote}
-                            onOpen={handleOpenNote}
-                            onOpenMenu={handleOpenMenu}
-                            onToggleLike={async (noteId) => {
+                            onMove={isArchive ? async () => {} : moveNote}
+                            onOpen={isArchive ? () => {} : handleOpenNote}
+                            onOpenMenu={isArchive ? () => {} : handleOpenMenu}
+                            onToggleLike={isArchive ? async () => {} : async (noteId) => {
                               await toggleLike({ noteId })
                             }}
                           />
@@ -1327,9 +1486,9 @@ export function BoardPage() {
                                       key={note.id}
                                       note={note}
                                       mode="stack"
-                                      onOpen={handleOpenNote}
-                                      onOpenMenu={handleOpenMenu}
-                                      onToggleLike={async (noteId) => {
+                                      onOpen={isArchive ? () => {} : handleOpenNote}
+                                      onOpenMenu={isArchive ? () => {} : handleOpenMenu}
+                                      onToggleLike={isArchive ? async () => {} : async (noteId) => {
                                         await toggleLike({ noteId })
                                       }}
                                     />
@@ -1347,9 +1506,9 @@ export function BoardPage() {
                                       key={note.id}
                                       note={note}
                                       mode="stack"
-                                      onOpen={handleOpenNote}
-                                      onOpenMenu={handleOpenMenu}
-                                      onToggleLike={async (noteId) => {
+                                      onOpen={isArchive ? () => {} : handleOpenNote}
+                                      onOpenMenu={isArchive ? () => {} : handleOpenMenu}
+                                      onToggleLike={isArchive ? async () => {} : async (noteId) => {
                                         await toggleLike({ noteId })
                                       }}
                                     />
@@ -1545,33 +1704,37 @@ export function BoardPage() {
         </StatsSection>
       </Shell>
 
-      <AnimatePresence>
-        {isComposerOpen ? (
-          <NoteComposer
-            key={`${composerCategory}-${composerColor}`}
-            initialCategory={composerCategory}
-            initialColor={composerColor}
-            onClose={closeComposer}
-            onSubmit={addNote}
-          />
-        ) : null}
-      </AnimatePresence>
+      {!isArchive && (
+        <AnimatePresence>
+          {isComposerOpen ? (
+            <NoteComposer
+              key={`${composerCategory}-${composerColor}`}
+              initialCategory={composerCategory}
+              initialColor={composerColor}
+              onClose={closeComposer}
+              onSubmit={addNote}
+            />
+          ) : null}
+        </AnimatePresence>
+      )}
 
-      <AnimatePresence>
-        {selectedNote ? (
-          <NoteEditorDialog
-            key={selectedNote.id}
-            note={selectedNote}
-            onClose={() => setSelectedNoteId(null)}
-            onAddComment={addComment}
-            onToggleLike={async (noteId) => toggleLike({ noteId })}
-            onSave={updateNote}
-            onDelete={deleteNote}
-          />
-        ) : null}
-      </AnimatePresence>
+      {!isArchive && (
+        <AnimatePresence>
+          {selectedNote ? (
+            <NoteEditorDialog
+              key={selectedNote.id}
+              note={selectedNote}
+              onClose={() => setSelectedNoteId(null)}
+              onAddComment={addComment}
+              onToggleLike={async (noteId) => toggleLike({ noteId })}
+              onSave={updateNote}
+              onDelete={deleteNote}
+            />
+          ) : null}
+        </AnimatePresence>
+      )}
 
-      {menuState && menuNote ? (
+      {!isArchive && menuState && menuNote ? (
         <NoteActionMenu
           note={menuNote}
           position={{ x: menuState.x, y: menuState.y }}
@@ -1580,7 +1743,7 @@ export function BoardPage() {
         />
       ) : null}
 
-      {expandedCategory ? null : <LiveChatPanel />}
+      {!isArchive && (expandedCategory ? null : <LiveChatPanel />)}
     </Page>
   )
 }
