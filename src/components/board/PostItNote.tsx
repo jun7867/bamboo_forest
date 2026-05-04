@@ -43,6 +43,7 @@ const NoteCard = styled(motion.article)<{
   box-shadow: ${({ $shadow }) => $shadow};
   color: ${({ $text }) => $text};
   cursor: ${({ $mode }) => ($mode === 'spread' ? 'grab' : 'pointer')};
+  touch-action: ${({ $mode }) => ($mode === 'spread' ? 'none' : 'auto')};
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   gap: 0.52rem;

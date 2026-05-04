@@ -10,6 +10,7 @@ import { PostItNote } from '../components/board/PostItNote'
 import { LiveChatPanel } from '../components/chat/LiveChatPanel'
 import { APP_VERSION_LABEL } from '../config/appVersion'
 import { ARCHIVE_BOARDS, V2_CUTOFF_DATE } from '../config/boardVersion'
+import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import {
   BOARD_CATEGORY_META,
   BOARD_CATEGORY_ORDER,
@@ -898,6 +899,48 @@ const TrendCard = styled.div`
   }
 `
 
+const SearchBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.65rem 1rem;
+  border-radius: ${({ theme }) => theme.radii.lg};
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: ${({ theme }) => theme.shadows.soft};
+`
+
+const SearchInput = styled.input`
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.93rem;
+  color: ${({ theme }) => theme.colors.textStrong};
+
+  &::placeholder {
+    color: ${({ theme }) => theme.colors.textMuted};
+  }
+`
+
+const SearchCount = styled.span`
+  color: ${({ theme }) => theme.colors.textMuted};
+  font-size: 0.84rem;
+  font-weight: 700;
+  white-space: nowrap;
+`
+
+const SearchClearButton = styled.button`
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: rgba(255, 255, 255, 0.8);
+  color: ${({ theme }) => theme.colors.textStrong};
+  font-size: 1rem;
+  flex-shrink: 0;
+`
+
 const ArchiveNoticeBanner = styled.div`
   padding: 0.9rem 1.1rem;
   border-radius: ${({ theme }) => theme.radii.lg};
@@ -1089,6 +1132,7 @@ export function BoardPage({ version = 'v2' }: BoardPageProps) {
   const [sortOption, setSortOption] = useState<BoardSortOption>('manual')
   const [isArchiveMenuOpen, setIsArchiveMenuOpen] = useState(false)
   const archiveMenuRef = useRef<HTMLDivElement | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const praiseRef = useRef<HTMLDivElement | null>(null)
   const suggestionRef = useRef<HTMLDivElement | null>(null)
@@ -1108,11 +1152,31 @@ export function BoardPage({ version = 'v2' }: BoardPageProps) {
 
   useEffect(() => {
     if (isArchive) return
-    const pollingId = window.setInterval(() => {
-      void loadNotes(true)
-    }, 30000)
 
-    return () => window.clearInterval(pollingId)
+    const client = supabase
+
+    if (!isSupabaseConfigured || !client) {
+      const pollingId = window.setInterval(() => void loadNotes(true), 30000)
+      return () => window.clearInterval(pollingId)
+    }
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+    function scheduleReload() {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => void loadNotes(true), 400)
+    }
+
+    const channel = client
+      .channel('board-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'board_notes' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'board_note_comments' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'board_note_likes' }, scheduleReload)
+      .subscribe()
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      void client.removeChannel(channel)
+    }
   }, [loadNotes, isArchive])
 
   useEffect(() => {
@@ -1137,7 +1201,17 @@ export function BoardPage({ version = 'v2' }: BoardPageProps) {
     return notes.filter((note) => new Date(note.createdAt ?? 0) >= V2_CUTOFF_DATE)
   }, [notes, isArchive])
 
-  const notesByCategory = useMemo(() => getCategoryMap(filteredNotes), [filteredNotes])
+  const searchedNotes = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return filteredNotes
+    return filteredNotes.filter(
+      (note) =>
+        note.content.toLowerCase().includes(q) ||
+        (note.author ?? '').toLowerCase().includes(q),
+    )
+  }, [filteredNotes, searchQuery])
+
+  const notesByCategory = useMemo(() => getCategoryMap(searchedNotes), [searchedNotes])
 
   const selectedNote = useMemo(
     () => filteredNotes.find((note) => note.id === selectedNoteId) ?? null,
@@ -1250,6 +1324,40 @@ export function BoardPage({ version = 'v2' }: BoardPageProps) {
             )}
           </HeaderActions>
         </Header>
+
+        <SearchBar>
+          <svg
+            width="1rem"
+            height="1rem"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            style={{ flexShrink: 0, opacity: 0.5 }}
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+          <SearchInput
+            type="search"
+            placeholder="포스트잇 내용이나 작성자로 검색..."
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            aria-label="포스트잇 검색"
+          />
+          {searchQuery && (
+            <SearchCount>{searchedNotes.length}개 검색됨</SearchCount>
+          )}
+          {searchQuery && (
+            <SearchClearButton
+              type="button"
+              onClick={() => setSearchQuery('')}
+              aria-label="검색 초기화"
+            >
+              ×
+            </SearchClearButton>
+          )}
+        </SearchBar>
 
         {status ? (
           <StatusBanner $tone={status.tone}>
