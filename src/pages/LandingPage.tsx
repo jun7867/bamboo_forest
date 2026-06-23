@@ -306,7 +306,7 @@ export function LandingPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.65, ease: 'easeOut' }}
         >
-          <Eyebrow>채용혁신 개발팀! 대나무숲!</Eyebrow>
+          <Eyebrow>뉴 채용혁신개발팀! 대나무숲!</Eyebrow>
           <Title>
             말하기 어려운 마음도
             <br />

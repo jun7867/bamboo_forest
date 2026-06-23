@@ -2,14 +2,15 @@ import { AnimatePresence } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { Link } from 'react-router-dom'
-import styled from 'styled-components'
+import styled, { keyframes } from 'styled-components'
+import { BirthdayCelebrationModal } from '../components/board/BirthdayCelebrationModal'
 import { NoteActionMenu } from '../components/board/NoteActionMenu'
 import { NoteComposer } from '../components/board/NoteComposer'
 import { NoteEditorDialog } from '../components/board/NoteEditorDialog'
 import { PostItNote } from '../components/board/PostItNote'
 import { LiveChatPanel } from '../components/chat/LiveChatPanel'
 import { APP_VERSION_LABEL } from '../config/appVersion'
-import { ARCHIVE_BOARDS, V2_CUTOFF_DATE } from '../config/boardVersion'
+import { ARCHIVE_BOARDS, V2_CUTOFF_DATE, V3_CUTOFF_DATE } from '../config/boardVersion'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import {
   BOARD_CATEGORY_META,
@@ -72,6 +73,47 @@ const Eyebrow = styled.span`
   color: ${({ theme }) => theme.colors.primaryDeep};
   font-size: 0.85rem;
   font-weight: 700;
+`
+
+const EyebrowRow = styled.div`
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+`
+
+const todayEventPulse = keyframes`
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 122, 89, 0.55), 0 6px 14px rgba(255, 122, 89, 0.28);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 122, 89, 0), 0 6px 14px rgba(255, 122, 89, 0.32);
+  }
+`
+
+const TodayEventChip = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #ff7a59 0%, #ffb454 100%);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  animation: ${todayEventPulse} 2.4s ease-in-out infinite;
+  transition: transform 0.18s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+
+  span[aria-hidden='true'] {
+    font-size: 0.95rem;
+  }
 `
 
 const PageTitle = styled.h1`
@@ -1100,10 +1142,10 @@ function sortBoardNotes(notes: BoardNote[], sortOption: BoardSortOption) {
 }
 
 interface BoardPageProps {
-  version?: 'v1' | 'v2'
+  version?: 'v1' | 'v2' | 'v3'
 }
 
-export function BoardPage({ version = 'v2' }: BoardPageProps) {
+export function BoardPage({ version = 'v3' }: BoardPageProps) {
   const notes = useBoardStore((state) => state.notes)
   const densityByCategory = useBoardStore((state) => state.densityByCategory)
   const isComposerOpen = useBoardStore((state) => state.isComposerOpen)
@@ -1124,13 +1166,14 @@ export function BoardPage({ version = 'v2' }: BoardPageProps) {
   const moveNote = useBoardStore((state) => state.moveNote)
   const reorderNotes = useBoardStore((state) => state.reorderNotes)
 
-  const isArchive = version === 'v1'
+  const isArchive = version !== 'v3'
 
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
   const [expandedCategory, setExpandedCategory] = useState<BoardCategory | null>(null)
   const [menuState, setMenuState] = useState<NoteMenuState | null>(null)
   const [sortOption, setSortOption] = useState<BoardSortOption>('manual')
   const [isArchiveMenuOpen, setIsArchiveMenuOpen] = useState(false)
+  const [isBirthdayOpen, setIsBirthdayOpen] = useState(false)
   const archiveMenuRef = useRef<HTMLDivElement | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -1195,11 +1238,17 @@ export function BoardPage({ version = 'v2' }: BoardPageProps) {
     : BOARD_CATEGORY_ORDER
 
   const filteredNotes = useMemo(() => {
-    if (isArchive) {
+    if (version === 'v1') {
       return notes.filter((note) => new Date(note.createdAt ?? 0) < V2_CUTOFF_DATE)
     }
-    return notes.filter((note) => new Date(note.createdAt ?? 0) >= V2_CUTOFF_DATE)
-  }, [notes, isArchive])
+    if (version === 'v2') {
+      return notes.filter((note) => {
+        const createdAt = new Date(note.createdAt ?? 0)
+        return createdAt >= V2_CUTOFF_DATE && createdAt < V3_CUTOFF_DATE
+      })
+    }
+    return notes.filter((note) => new Date(note.createdAt ?? 0) >= V3_CUTOFF_DATE)
+  }, [notes, version])
 
   const searchedNotes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -1260,7 +1309,19 @@ export function BoardPage({ version = 'v2' }: BoardPageProps) {
       <Shell>
         <Header>
           <TitleBlock>
-            <Eyebrow>{isArchive ? '아카이브' : '채용혁신개발팀'}</Eyebrow>
+            <EyebrowRow>
+              <Eyebrow>{isArchive ? '아카이브' : '뉴 채용혁신개발팀'}</Eyebrow>
+              {!isArchive && (
+                <TodayEventChip
+                  type="button"
+                  onClick={() => setIsBirthdayOpen(true)}
+                  aria-label="오늘의 이벤트 열기 - 이상민의 생일 축하"
+                >
+                  <span aria-hidden="true">🎂</span>
+                  오늘의 이벤트
+                </TodayEventChip>
+              )}
+            </EyebrowRow>
             <PageTitle>{isArchive ? '지난 대나무숲' : '하고싶은거 다 말해~'}</PageTitle>
             <Description>제작자 남준영 v.{APP_VERSION_LABEL}</Description>
           </TitleBlock>
@@ -1852,6 +1913,17 @@ export function BoardPage({ version = 'v2' }: BoardPageProps) {
       ) : null}
 
       {!isArchive && (expandedCategory ? null : <LiveChatPanel />)}
+
+      {!isArchive && (
+        <AnimatePresence>
+          {isBirthdayOpen ? (
+            <BirthdayCelebrationModal
+              key="birthday-sangmin"
+              onClose={() => setIsBirthdayOpen(false)}
+            />
+          ) : null}
+        </AnimatePresence>
+      )}
     </Page>
   )
 }

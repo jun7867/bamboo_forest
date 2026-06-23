@@ -60,11 +60,11 @@ export function TopMarqueeBanner() {
       <Track>
         <Message>
           <span>(njy1213@midasin.com) 제작자에게 커피 한잔은 큰 힘이 됩니다.</span>
-          <strong>채용혁신 개발팀 대나무숲</strong>
+          <strong>뉴 채용혁신개발팀 대나무숲</strong>
         </Message>
         <Message aria-hidden="true">
           <span>(njy1213@midasin.com) 제작자에게 커피 한잔은 큰 힘이 됩니다.</span>
-          <strong>채용혁신 개발팀 대나무숲</strong>
+          <strong>뉴 채용혁신개발팀 대나무숲</strong>
         </Message>
       </Track>
     </Banner>
