@@ -21,6 +21,7 @@ export interface BoardNote {
   author: string
   content: string
   color: PostItColor
+  imageUrl?: string | null
   position: BoardPosition
   rotation: number
   isPinned: boolean
@@ -46,7 +47,9 @@ export interface CreateBoardNoteInput {
   author: string
   content: string
   color: PostItColor
-  password: string
+  imageUrl?: string | null
+  // 비워두면 이 기기 전용 비밀번호가 자동으로 만들어진다
+  password?: string
 }
 
 export interface UpdateBoardNoteInput {
@@ -55,6 +58,7 @@ export interface UpdateBoardNoteInput {
   author: string
   content: string
   color: PostItColor
+  imageUrl?: string | null
   password: string
 }
 

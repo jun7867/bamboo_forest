@@ -1,3 +1,4 @@
+import { getNoteMediaSizeError, getVideoExtension } from './noteMedia'
 import { getSupabaseClient } from './supabase'
 import type {
   BoardNote,
@@ -11,12 +12,46 @@ import type {
   UpdateBoardNoteInput,
 } from '../types/board'
 
+const BOARD_NOTE_IMAGE_BUCKET = 'board-note-images'
+// 경로가 매번 새 UUID라 같은 URL의 내용이 바뀌지 않는다. 재방문 시 다시 받지 않도록 1년 캐시한다
+const BOARD_NOTE_IMAGE_CACHE_SECONDS = String(60 * 60 * 24 * 365)
+const UNIQUE_VIOLATION_CODE = '23505'
+
+export async function uploadBoardNoteImage(file: File) {
+  const sizeError = getNoteMediaSizeError(file)
+
+  if (sizeError) {
+    throw new Error(sizeError)
+  }
+
+  const client = getSupabaseClient()
+  const extension = getVideoExtension(file) ?? (file.name.split('.').pop()?.toLowerCase() || 'jpg')
+  const path = `${crypto.randomUUID()}.${extension}`
+
+  const { error } = await client.storage
+    .from(BOARD_NOTE_IMAGE_BUCKET)
+    .upload(path, file, {
+      contentType: file.type,
+      cacheControl: BOARD_NOTE_IMAGE_CACHE_SECONDS,
+      upsert: false,
+    })
+
+  if (error) {
+    throw new Error('사진 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.')
+  }
+
+  const { data } = client.storage.from(BOARD_NOTE_IMAGE_BUCKET).getPublicUrl(path)
+
+  return data.publicUrl
+}
+
 interface BoardNoteRow {
   id: string
   category: BoardNote['category']
   author: string
   content: string
   color: BoardNote['color']
+  image_url: string | null
   position_x: number
   position_y: number
   rotation: number
@@ -39,6 +74,13 @@ interface BoardNoteLikeRow {
   client_id: string
 }
 
+const SAFE_IMAGE_URL_PATTERN = /^https?:\/\//i
+
+// RPC로 아무 문자열이나 넣을 수 있어서, 화면에 쓰기 전에 http(s) 주소만 남긴다
+function toSafeImageUrl(value: string | null | undefined) {
+  return value && SAFE_IMAGE_URL_PATTERN.test(value) ? value : null
+}
+
 function mapBoardNoteComment(row: BoardNoteCommentRow): BoardNoteComment {
   return {
     id: row.id,
@@ -56,6 +98,7 @@ function mapBoardNote(row: BoardNoteRow, comments: BoardNoteComment[] = []): Boa
     author: row.author,
     content: row.content,
     color: row.color,
+    imageUrl: toSafeImageUrl(row.image_url),
     position: {
       x: row.position_x,
       y: row.position_y,
@@ -79,9 +122,20 @@ function getSingleRow(data: BoardNoteRow[] | null, fallbackMessage: string) {
   return row
 }
 
-function mapBoardError(error: { message?: string } | null, fallbackMessage: string) {
+const CHECK_VIOLATION_CODE = '23514'
+
+function mapBoardError(
+  error: { message?: string; code?: string } | null,
+  fallbackMessage: string,
+) {
   if (!error?.message) {
     return fallbackMessage
+  }
+
+  if (error.code === CHECK_VIOLATION_CODE) {
+    return error.message.includes('content')
+      ? '글이 너무 길어요. 조금 줄여서 다시 붙여 주세요.'
+      : '입력한 값이 허용 범위를 벗어났어요. 내용을 확인해 주세요.'
   }
 
   if (error.message.includes('INVALID_PASSWORD')) {
@@ -181,6 +235,7 @@ export async function fetchBoardNotes(clientId: string) {
 
 export async function createBoardNote(
   input: CreateBoardNoteInput & {
+    password: string
     position: BoardPosition
     rotation: number
   },
@@ -195,6 +250,7 @@ export async function createBoardNote(
     p_position_x: input.position.x,
     p_position_y: input.position.y,
     p_rotation: input.rotation,
+    p_image_url: input.imageUrl ?? null,
   })
 
   if (error) {
@@ -230,6 +286,7 @@ export async function updateBoardNote(input: UpdateBoardNoteInput) {
     p_author: input.author,
     p_color: input.color,
     p_content: input.content,
+    p_image_url: input.imageUrl ?? null,
   })
 
   if (error) {
@@ -322,6 +379,11 @@ export async function toggleBoardNoteLike(input: ToggleBoardNoteLikeInput) {
     note_id: input.noteId,
     client_id: input.clientId,
   })
+
+  // 다른 탭에서 이미 공감한 상태라면 실패가 아니라 이미 반영된 것이다
+  if (error?.code === UNIQUE_VIOLATION_CODE) {
+    return { isLiked: true }
+  }
 
   if (error) {
     if (isMissingLikesTableError(error)) {

@@ -13,7 +13,7 @@ const marqueeMove = keyframes`
 const Banner = styled.div`
   position: fixed;
   inset: 0 0 auto 0;
-  z-index: 120;
+  z-index: ${({ theme }) => theme.zIndex.banner};
   height: 2.75rem;
   border-bottom: 1px solid ${({ theme }) => theme.colors.borderStrong};
   background: linear-gradient(90deg, rgba(36, 54, 37, 0.92), rgba(54, 93, 56, 0.94));
@@ -51,6 +51,15 @@ const Message = styled.div`
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     font-size: 0.84rem;
     animation-duration: 15s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    padding-left: 1rem;
+
+    &[aria-hidden='true'] {
+      display: none;
+    }
   }
 `
 

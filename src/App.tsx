@@ -13,6 +13,11 @@ const BoardPage = lazy(async () => {
   return { default: module.BoardPage }
 })
 
+const AnalyticsDashboardPage = lazy(async () => {
+  const module = await import('./pages/AnalyticsDashboardPage')
+  return { default: module.AnalyticsDashboardPage }
+})
+
 function RouteLoadingFallback() {
   return (
     <div
@@ -41,9 +46,11 @@ function App() {
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/board" element={<BoardPage version="v3" />} />
-          <Route path="/board/v1" element={<BoardPage version="v1" />} />
-          <Route path="/board/v2" element={<BoardPage version="v2" />} />
+          <Route path="/board" element={<BoardPage />} />
+          <Route path="/board/:seasonId" element={<BoardPage />} />
+          {import.meta.env.DEV ? (
+            <Route path="/__analytics" element={<AnalyticsDashboardPage />} />
+          ) : null}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
