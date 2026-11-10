@@ -11,6 +11,7 @@ declare module 'styled-components' {
       primarySoft: string
       borderStrong: string
       borderSoft: string
+      danger: string
     }
     gradients: {
       surface: string
@@ -32,6 +33,15 @@ declare module 'styled-components' {
     breakpoints: {
       tablet: string
       mobile: string
+    }
+    zIndex: {
+      sticky: number
+      floating: number
+      banner: number
+      menu: number
+      modal: number
+      overlay: number
+      toast: number
     }
   }
 }

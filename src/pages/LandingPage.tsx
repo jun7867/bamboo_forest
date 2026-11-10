@@ -190,7 +190,7 @@ const HighlightChip = styled.span`
   }
 `
 
-const EnterButton = styled(motion(Link))`
+const EnterButton = styled(motion.create(Link))`
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -332,15 +332,14 @@ export function LandingPage() {
             </PatchButton>
           </VersionRow>
           <Description>
-            익명으로도, 이름을 적고도 팀의 의견을 모을 수 있는 대나무숲입니다.
-            칭찬, 건의, 질문, 하고 싶은 말을 한 곳에서 자연스럽게 모으고 정리할 수
-            있도록 준비했어요.
+            타운홀 전에 칭찬, 건의, 질문, 하고 싶은 말을 익명으로 모으고, 당일에는
+            타운홀 모드로 하나씩 꺼내 함께 이야기하는 대나무숲입니다.
           </Description>
 
           <HighlightRow>
             <HighlightChip>익명 의견 수집</HighlightChip>
-            <HighlightChip>카테고리 보드</HighlightChip>
-            <HighlightChip>실시간 소통 확장 예정</HighlightChip>
+            <HighlightChip>공감으로 우선순위</HighlightChip>
+            <HighlightChip>타운홀 모드</HighlightChip>
           </HighlightRow>
 
           <EnterButton

@@ -9,12 +9,11 @@ const FloatingWrap = styled.div`
   position: fixed;
   right: 1rem;
   bottom: 1rem;
-  z-index: 70;
+  z-index: ${({ theme }) => theme.zIndex.floating};
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     right: 0.75rem;
-    left: 0.75rem;
-    bottom: 0.75rem;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
   }
 `
 
@@ -31,14 +30,14 @@ const TriggerButton = styled(motion.button)`
   box-shadow: 0 18px 34px rgba(78, 141, 84, 0.28);
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    width: 100%;
-    justify-content: center;
+    min-height: 3rem;
+    padding: 0.7rem 1rem;
   }
 `
 
 const Panel = styled(motion.section)`
   width: min(33rem, calc(100vw - 2rem));
-  height: min(42rem, calc(100dvh - 2rem));
+  height: min(42rem, calc(100dvh - 2rem - 2.75rem));
   display: grid;
   grid-template-rows: auto 1fr auto;
   border-radius: ${({ theme }) => theme.radii.xl};
@@ -48,8 +47,8 @@ const Panel = styled(motion.section)`
   overflow: hidden;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    width: 100%;
-    height: min(78dvh, calc(100dvh - 1.5rem));
+    width: calc(100vw - 1.5rem);
+    height: min(78dvh, calc(100dvh - 1.5rem - 2.75rem));
   }
 `
 
@@ -385,7 +384,7 @@ export function LiveChatPanel() {
 
   return (
     <FloatingWrap>
-      <AnimatePresence initial={false}>
+      <AnimatePresence initial={false} mode="wait">
         {isOpen ? (
           <Panel
             key="chat-panel"

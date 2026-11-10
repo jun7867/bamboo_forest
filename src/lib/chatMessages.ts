@@ -20,17 +20,18 @@ function mapChatMessage(row: ChatMessageRow): ChatMessage {
 
 export async function fetchChatMessages(limit = 80) {
   const client = getSupabaseClient()
+  // 최신 메시지 limit개를 가져온 뒤 화면 표시 순서(오래된 → 최신)로 뒤집는다
   const { data, error } = await client
     .from('chat_messages')
     .select('id, alias, message, created_at')
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(limit)
 
   if (error) {
     throw new Error('채팅 내역을 불러오지 못했어요.')
   }
 
-  return (data ?? []).map(mapChatMessage)
+  return (data ?? []).map(mapChatMessage).reverse()
 }
 
 export async function sendChatMessage(input: SendChatMessageInput) {

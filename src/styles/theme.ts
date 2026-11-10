@@ -10,6 +10,7 @@ export const theme: DefaultTheme = {
     primarySoft: 'rgba(122, 175, 113, 0.18)',
     borderStrong: 'rgba(80, 115, 61, 0.18)',
     borderSoft: 'rgba(80, 115, 61, 0.1)',
+    danger: '#B64D4D',
   },
   gradients: {
     surface:
@@ -32,5 +33,14 @@ export const theme: DefaultTheme = {
   breakpoints: {
     tablet: '920px',
     mobile: '640px',
+  },
+  zIndex: {
+    sticky: 40,
+    floating: 70,
+    banner: 120,
+    menu: 150,
+    modal: 200,
+    overlay: 300,
+    toast: 400,
   },
 }
