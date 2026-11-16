@@ -42,6 +42,10 @@ export function formatFullDateTime(value: string | undefined) {
   return value ? fullDateTimeFormatter.format(new Date(value)) : ''
 }
 
+export function formatShortDate(value: string) {
+  return shortDateFormatter.format(new Date(value))
+}
+
 export function getDaysUntil(value: string, now = Date.now()) {
   const today = new Date(now)
   const target = new Date(value)
