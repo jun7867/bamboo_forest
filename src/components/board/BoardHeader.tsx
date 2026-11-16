@@ -212,6 +212,13 @@ const SecondaryLink = styled(Link)`
   color: ${({ theme }) => theme.colors.textStrong};
 `
 
+// 모바일 그리드에서 홈 버튼 다음 줄을 통째로 쓰도록 한 줄을 차지하게 한다
+const CoffeeLink = styled(SecondaryLink)`
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    grid-column: 1 / -1;
+  }
+`
+
 const HomeLink = styled(Link)`
   display: inline-flex;
   align-items: center;
@@ -428,6 +435,7 @@ export function BoardHeader({
         <HomeLink to="/" aria-label="홈으로" title="홈으로">
           <IconHome />
         </HomeLink>
+        {isArchive ? null : <CoffeeLink to="/coffee">☕ 커피 내기</CoffeeLink>}
         {isArchive ? null : (
           <PrimaryButton type="button" onClick={onCompose} title="포스트잇 붙이기 (N)">
             <IconPlus />

@@ -13,6 +13,11 @@ const BoardPage = lazy(async () => {
   return { default: module.BoardPage }
 })
 
+const CoffeePage = lazy(async () => {
+  const module = await import('./pages/CoffeePage')
+  return { default: module.CoffeePage }
+})
+
 const AnalyticsDashboardPage = lazy(async () => {
   const module = await import('./pages/AnalyticsDashboardPage')
   return { default: module.AnalyticsDashboardPage }
@@ -48,6 +53,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/board" element={<BoardPage />} />
           <Route path="/board/:seasonId" element={<BoardPage />} />
+          <Route path="/coffee" element={<CoffeePage />} />
           {import.meta.env.DEV ? (
             <Route path="/__analytics" element={<AnalyticsDashboardPage />} />
           ) : null}
